@@ -32,8 +32,7 @@ app.use("/api/payment", paymentRouter);
 app.use("/api/delivery", deliveryRouter);
 app.use("/api/drone", droneRouter);
 app.use("/api/location", locationRouter);
-// Rating routes đã bị disable - dữ liệu lưu trong localStorage
-// app.use("/api/rating", ratingRouter);
+
 app.listen(PORT, () => {
   connectDB();
   console.log(`Server is running on port ${PORT}`);

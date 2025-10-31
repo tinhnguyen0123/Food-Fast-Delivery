@@ -16,4 +16,4 @@ authRouter.post("/logout", AuthController.logout);
 // Đổi mật khẩu (cần đăng nhập)
 authRouter.put("/change-password", verifyToken, AuthController.changePassword);
 
-export default router;
+export default authRouter;
