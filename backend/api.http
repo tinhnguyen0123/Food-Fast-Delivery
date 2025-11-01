@@ -1,0 +1,67 @@
+##############################################
+# Health Check
+##############################################
+GET http://localhost:5000/api/health
+Accept: application/json
+
+###
+
+##############################################
+# Đăng ký user mới
+##############################################
+POST http://localhost:5000/api/auth/register
+Content-Type: application/json
+
+{
+  "name": "Test User",
+  "email": "testuser@example.com",
+  "password": "123456",
+  "phone": "0123456789",
+  "role": "customer"
+}
+
+###
+
+##############################################
+# Đăng nhập
+##############################################
+POST http://localhost:5000/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "testuser@example.com",
+  "password": "654321"
+}
+
+### 
+# Lưu ý: sau khi gửi request login, copy giá trị "token" từ response JSON
+# vào chỗ {{token}} của các request tiếp theo.
+
+##############################################
+# Lấy thông tin user hiện tại
+##############################################
+GET http://localhost:5000/api/user/current
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY5MDVlY2NiMTVmZjRkYTQxODllMmVhMCIsInJvbGUiOiJjdXN0b21lciIsImlhdCI6MTc2MTk5NjAxMSwiZXhwIjoxNzYyMDgyNDExfQ.bc7ycT8WSf9Isg6kWyyge5sxP1AHt5UOioIj9YxPL98
+###
+
+##############################################
+# Thay đổi mật khẩu (cần login trước)
+##############################################
+PUT http://localhost:5000/api/auth/change-password
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY5MDVlY2NiMTVmZjRkYTQxODllMmVhMCIsInJvbGUiOiJjdXN0b21lciIsImlhdCI6MTc2MTk5NjAxMSwiZXhwIjoxNzYyMDgyNDExfQ.bc7ycT8WSf9Isg6kWyyge5sxP1AHt5UOioIj9YxPL98
+Content-Type: application/json
+
+{
+  "oldPassword": "123456",
+  "newPassword": "654321"
+}
+
+###
+
+##############################################
+# Đăng xuất
+##############################################
+POST http://localhost:5000/api/auth/logout
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY5MDVlOTE4OGYxMzU0ODEzMTk1Yzc0ZCIsInJvbGUiOiJjdXN0b21lciIsImlhdCI6MTc2MTk5NTM3NywiZXhwIjoxNzYyMDgxNzc3fQ.1R8t0eqB4HMtc0d8IfkBuuRzkDHTPXD1t9Kawi7PKxU
+
+###

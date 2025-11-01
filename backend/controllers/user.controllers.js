@@ -16,9 +16,10 @@ class UserController {
   async getUserById(req, res) {
     try {
       const user = await UserService.getUserById(req.params.id);
+      if (!user) return res.status(404).json({ message: "User not found" });
       res.status(200).json(user);
     } catch (error) {
-      res.status(404).json({ message: error.message });
+      res.status(400).json({ message: error.message });
     }
   }
 
@@ -50,6 +51,18 @@ class UserController {
       res.status(200).json({ message: "User deleted successfully", deletedUser });
     } catch (error) {
       res.status(400).json({ message: error.message });
+    }
+  }
+
+  // 🔹 Lấy user hiện tại từ token
+  async getCurrentUser(req, res) {
+    try {
+      // req.user.id được gán từ middleware auth
+      const user = await UserService.getUserById(req.user.id);
+      if (!user) return res.status(404).json({ message: "User not found" });
+      res.status(200).json(user);
+    } catch (error) {
+      res.status(500).json({ message: error.message });
     }
   }
 }

@@ -17,14 +17,18 @@ class AuthController {
     try {
       const { email, password } = req.body;
       const { user, token } = await AuthService.login(email, password);
+
+      // Gửi cookie
       res.cookie("token", token, {
         httpOnly: true,
-        sameSite: "strict",
+        sameSite: "Strict",
         maxAge: 24 * 60 * 60 * 1000, // 1 ngày
       });
+
       return res.status(200).json({
         message: "Login successful",
         user: { id: user._id, email: user.email, role: user.role },
+        token, // gửi token luôn trong JSON để frontend test dễ
       });
     } catch (error) {
       return res.status(400).json({ message: error.message });
@@ -33,16 +37,14 @@ class AuthController {
 
   async changePassword(req, res) {
     try {
-      const { userId } = req.user; // Lấy từ middleware verify token
       const { oldPassword, newPassword } = req.body;
-      const updatedUser = await AuthService.changePassword(
-        userId,
-        oldPassword,
-        newPassword
-      );
-      return res
-        .status(200)
-        .json({ message: "Password changed successfully", updatedUser });
+      const userId = req.user.id;
+
+      const updatedUser = await AuthService.changePassword(userId, oldPassword, newPassword);
+      return res.status(200).json({
+        message: "Password changed successfully",
+        user: { id: updatedUser._id, email: updatedUser.email, role: updatedUser.role },
+      });
     } catch (error) {
       return res.status(400).json({ message: error.message });
     }
