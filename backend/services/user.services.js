@@ -1,8 +1,42 @@
-// services/user.services.js
 import UserRepository from "../repositories/user.repositories.js";
 import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
 
 class UserService {
+  // Đăng ký user mới
+  async registerUser({ name, email, password, phone , role }) {
+    const existingUser = await UserRepository.getUserByEmail(email);
+    if (existingUser) throw new Error("Email already exists");
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const newUser = await UserRepository.createUser({
+      name,
+      email,
+      password: hashedPassword,
+      phone,
+      role,
+    });
+
+    return newUser;
+  }
+
+  // Đăng nhập
+  async loginUser({ email, password }) {
+    const user = await UserRepository.getUserByEmail(email);
+    if (!user) throw new Error("Invalid email or password");
+
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) throw new Error("Invalid email or password");
+
+    const token = jwt.sign(
+      { id: user._id, role: user.role },
+      process.env.JWT_SECRET,
+      { expiresIn: "1d" }
+    );
+
+    return { user, token };
+  }
+
   // Lấy tất cả user
   async getAllUsers() {
     return await UserRepository.getAllUsers();
@@ -15,14 +49,8 @@ class UserService {
     return user;
   }
 
-  // Lấy user theo role
-  async getUsersByRole(role) {
-    return await UserRepository.getUsersByRole(role);
-  }
-
-  // Cập nhật thông tin user
+  // Cập nhật user
   async updateUser(userId, updateData) {
-    // Nếu có password mới, hash lại
     if (updateData.password) {
       updateData.password = await bcrypt.hash(updateData.password, 10);
     }
@@ -40,3 +68,4 @@ class UserService {
 }
 
 export default new UserService();
+
