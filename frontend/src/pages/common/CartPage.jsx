@@ -78,7 +78,6 @@ export default function CartPage() {
       // Sync với response từ server (nếu backend cập nhật đúng)
       const updatedCart = await res.json();
       setCart(updatedCart);
-      toast.success("Đã cập nhật số lượng");
     } catch (err) {
       // Revert về state trước
       setCart(previousCart);
