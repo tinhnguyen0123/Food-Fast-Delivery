@@ -7,6 +7,7 @@ export default function Navbar() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [user, setUser] = useState(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false); // State cho mobile menu
+  const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false); // State cho profile dropdown
 
   // Kiểm tra token khi component load hoặc khi route thay đổi
   useEffect(() => {
@@ -33,11 +34,16 @@ export default function Navbar() {
     setIsLoggedIn(false);
     setUser(null);
     navigate('/login');
-    setIsMobileMenuOpen(false); // Đóng menu mobile sau logout
+    setIsProfileDropdownOpen(false); // Đóng dropdown
+    setIsMobileMenuOpen(false); // Đóng mobile menu
   };
 
   const toggleMobileMenu = () => {
     setIsMobileMenuOpen(!isMobileMenuOpen);
+  };
+
+  const toggleProfileDropdown = () => {
+    setIsProfileDropdownOpen(!isProfileDropdownOpen);
   };
 
   // Helper để check active route
@@ -103,28 +109,49 @@ export default function Navbar() {
                   📦 Đơn hàng
                 </button>
                 
-                <div className="flex items-center gap-4 ml-4">
-                  <span className="text-gray-600 text-sm hidden sm:block">
+                <div className="relative ml-4">
+                  <span className="text-gray-600 text-sm hidden sm:block mr-4">
                     Chào, <span className="font-semibold text-blue-600">{user?.name}</span>
                   </span>
                   
+                  {/* Nút Tài khoản - Toggle dropdown */}
                   <button 
-                    onClick={() => navigate('/profile')}
-                    className={`bg-gray-100 text-gray-700 px-4 py-2 rounded-xl hover:bg-gray-200 transition-shadow shadow-sm flex items-center gap-1 text-sm ${
+                    onClick={toggleProfileDropdown}
+                    className={`bg-gray-100 text-gray-700 px-4 py-2 rounded-xl hover:bg-gray-200 transition-shadow shadow-sm flex items-center gap-1 text-sm relative ${
                       isActive('/profile') 
                         ? 'bg-blue-50 text-blue-600 border border-blue-200' 
                         : ''
                     }`}
                   >
                     👤 Tài khoản
+                    <span className={`transition-transform ml-1 ${isProfileDropdownOpen ? 'rotate-180' : ''}`}>
+                      ▼
+                    </span>
                   </button>
-                  
-                  <button 
-                    onClick={handleLogout}
-                    className="bg-red-500 text-white px-4 py-2 rounded-xl hover:bg-red-600 transition-shadow shadow-sm text-sm"
-                  >
-                    🚪 Đăng xuất
-                  </button>
+
+                  {/* Desktop Profile Dropdown */}
+                  {isProfileDropdownOpen && (
+                    <div className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-lg border border-gray-200 py-2 z-10 animate-in fade-in slide-in-from-top-2 duration-200">
+                      {/* Nếu đang ở profile, có thể thêm info khác */}
+                      {!isActive('/profile') && (
+                        <button 
+                          onClick={() => {
+                            navigate('/profile');
+                            setIsProfileDropdownOpen(false);
+                          }}
+                          className="w-full text-left px-4 py-2 text-gray-700 hover:bg-blue-50 rounded-t-xl transition-colors text-sm flex items-center gap-2"
+                        >
+                          📝 Xem profile
+                        </button>
+                      )}
+                      <button 
+                        onClick={handleLogout}
+                        className="w-full text-left px-4 py-2 text-red-600 hover:bg-red-50 rounded-b-xl transition-colors text-sm flex items-center gap-2"
+                      >
+                        🚪 Đăng xuất
+                      </button>
+                    </div>
+                  )}
                 </div>
               </>
             ) : (
@@ -193,31 +220,34 @@ export default function Navbar() {
                     📦 Đơn hàng
                   </button>
                   
-                  <div className="flex flex-col gap-2 pt-2">
-                    <span className="text-gray-600 text-sm px-4">
+                  <div className="flex flex-col gap-2 pt-2 border-t border-gray-200">
+                    <span className="text-gray-600 text-sm px-4 pt-2">
                       Chào, <span className="font-semibold text-blue-600">{user?.name}</span>
                     </span>
                     
-                    <button 
-                      onClick={() => {
-                        navigate('/profile');
-                        setIsMobileMenuOpen(false);
-                      }}
-                      className={`bg-gray-100 text-gray-700 px-4 py-2 rounded-xl hover:bg-gray-200 transition-shadow shadow-sm flex items-center gap-1 text-sm w-full justify-start ${
-                        isActive('/profile') 
-                          ? 'bg-blue-50 text-blue-600 border border-blue-200' 
-                          : ''
-                      }`}
-                    >
-                      👤 Tài khoản
-                    </button>
-                    
-                    <button 
-                      onClick={handleLogout}
-                      className="bg-red-500 text-white px-4 py-2 rounded-xl hover:bg-red-600 transition-shadow shadow-sm text-sm w-full"
-                    >
-                      🚪 Đăng xuất
-                    </button>
+                    {/* Mobile Profile Section - Tương tự dropdown */}
+                    <div className="bg-gray-100 rounded-xl p-2">
+                      <button 
+                        onClick={() => {
+                          navigate('/profile');
+                          setIsMobileMenuOpen(false);
+                        }}
+                        className={`bg-gray-100 text-gray-700 px-4 py-2 rounded-xl hover:bg-gray-200 transition-shadow shadow-sm flex items-center gap-1 text-sm w-full justify-start mb-1 ${
+                          isActive('/profile') 
+                            ? 'bg-blue-50 text-blue-600 border border-blue-200' 
+                            : ''
+                        }`}
+                      >
+                        👤 Xem profile
+                      </button>
+                      
+                      <button 
+                        onClick={handleLogout}
+                        className="bg-red-500 text-white px-4 py-2 rounded-xl hover:bg-red-600 transition-shadow shadow-sm text-sm w-full"
+                      >
+                        🚪 Đăng xuất
+                      </button>
+                    </div>
                   </div>
                 </>
               ) : (
