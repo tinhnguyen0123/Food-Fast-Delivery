@@ -46,6 +46,11 @@ function App() {
               <ProfilePage />
             </ProtectedRoute>
           } />
+          <Route path="/orders/new" element={
+            <ProtectedRoute>
+              <CheckoutPage />
+            </ProtectedRoute>
+          } />
           <Route path="/orders" element={
             <ProtectedRoute>
               <OrdersPage />
