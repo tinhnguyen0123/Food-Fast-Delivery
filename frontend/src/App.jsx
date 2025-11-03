@@ -10,6 +10,7 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import ProductsPage from "./pages/common/ProductsPage";
 import CartPage from "./pages/common/CartPage";
 
+
 function App() {
   return (
     <div className="min-h-screen bg-blue-50 text-gray-800">
@@ -27,7 +28,7 @@ function App() {
       />
 
       {/* Thay header cũ bằng Navbar */}
-      <Navbar />
+      { <Navbar />}
 
       <main className="p-6">
         <Routes>
@@ -47,6 +48,7 @@ function App() {
               <CartPage />
             </ProtectedRoute>
           } />
+         
         </Routes>
       </main>
     </div>

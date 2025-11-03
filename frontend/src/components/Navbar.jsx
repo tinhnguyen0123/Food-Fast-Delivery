@@ -48,12 +48,7 @@ export default function Navbar() {
 
           {/* Menu */}
           <div className="flex items-center gap-6">
-            <button 
-              onClick={() => navigate('/')}
-              className="text-gray-700 hover:text-blue-600 transition"
-            >
-              Trang chủ
-            </button>
+            
 
             <button 
              onClick={() => navigate('/products')}
