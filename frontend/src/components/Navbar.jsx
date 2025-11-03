@@ -55,6 +55,13 @@ export default function Navbar() {
               Trang chủ
             </button>
 
+            <button 
+             onClick={() => navigate('/products')}
+             className="text-gray-700 hover:text-blue-600 transition"
+           >
+             Thực đơn
+           </button>
+
             {isLoggedIn ? (
               // Hiển thị khi đã đăng nhập
               <>
@@ -74,7 +81,7 @@ export default function Navbar() {
                     onClick={() => navigate('/profile')}
                     className="bg-gray-200 text-gray-700 px-4 py-2 rounded hover:bg-gray-300 transition"
                   >
-                    Tài khoản
+                    👤Tài khoản
                   </button>
                   
                   <button 
