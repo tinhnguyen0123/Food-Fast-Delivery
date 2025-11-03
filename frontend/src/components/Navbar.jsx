@@ -65,6 +65,12 @@ export default function Navbar() {
             {isLoggedIn ? (
               // Hiển thị khi đã đăng nhập
               <>
+                <button
+                onClick={() => navigate("/cart")}
+                className="text-gray-700 hover:text-blue-600 transition flex items-center gap-1"
+              >
+                🛒 Giỏ hàng
+              </button>
                 <button 
                   onClick={() => navigate('/orders')}
                   className="text-gray-700 hover:text-blue-600 transition"

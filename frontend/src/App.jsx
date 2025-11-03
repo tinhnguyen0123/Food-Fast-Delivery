@@ -8,6 +8,7 @@ import RegisterPage from "./pages/common/RegisterPage";
 import ProfilePage from "./pages/ProfilePage";
 import ProtectedRoute from "./components/ProtectedRoute";
 import ProductsPage from "./pages/common/ProductsPage";
+import CartPage from "./pages/common/CartPage";
 
 function App() {
   return (
@@ -39,6 +40,11 @@ function App() {
           <Route path="/profile" element={
             <ProtectedRoute>
               <ProfilePage />
+            </ProtectedRoute>
+          } />
+          <Route path="/cart" element={
+            <ProtectedRoute>
+              <CartPage />
             </ProtectedRoute>
           } />
         </Routes>

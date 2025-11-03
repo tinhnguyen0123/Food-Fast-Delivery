@@ -112,7 +112,6 @@ export default function RegisterPage() {
         >
           <option value="customer">Khách hàng</option>
           <option value="restaurant">Nhà hàng</option>
-          <option value="admin">Admin</option>
         </select>
 
         <button 
