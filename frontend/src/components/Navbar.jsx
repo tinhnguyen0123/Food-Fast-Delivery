@@ -40,14 +40,19 @@ export default function Navbar() {
     setIsMobileMenuOpen(!isMobileMenuOpen);
   };
 
+  // Helper để check active route
+  const isActive = (path) => location.pathname === path;
+
   return (
     <nav className="bg-white/95 backdrop-blur-sm shadow-lg border-b border-gray-100 sticky top-0 z-50">
       <div className="container mx-auto px-4 py-3">
         <div className="flex justify-between items-center">
-          {/* Logo */}
+          {/* Logo - Active nếu ở home */}
           <div 
             onClick={() => navigate('/')}
-            className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent cursor-pointer hover:scale-105 transition-transform"
+            className={`text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent cursor-pointer hover:scale-105 transition-transform ${
+              isActive('/') ? 'scale-105' : ''
+            }`}
           >
             🚁 Drone Delivery
           </div>
@@ -66,7 +71,11 @@ export default function Navbar() {
           <div className="hidden md:flex items-center gap-6">
             <button 
               onClick={() => navigate('/products')}
-              className="text-gray-700 hover:text-blue-600 font-medium transition-colors px-3 py-2 rounded-lg hover:bg-blue-50"
+              className={`font-medium transition-colors px-3 py-2 rounded-lg hover:bg-blue-50 ${
+                isActive('/products') 
+                  ? 'bg-blue-50 text-blue-600 border-b-2 border-blue-600' 
+                  : 'text-gray-700 hover:text-blue-600'
+              }`}
             >
               🍽️ Thực đơn
             </button>
@@ -75,13 +84,21 @@ export default function Navbar() {
               <>
                 <button
                   onClick={() => navigate("/cart")}
-                  className="text-gray-700 hover:text-blue-600 font-medium transition-colors px-3 py-2 rounded-lg hover:bg-blue-50 flex items-center gap-1"
+                  className={`font-medium transition-colors px-3 py-2 rounded-lg hover:bg-blue-50 flex items-center gap-1 ${
+                    isActive('/cart') 
+                      ? 'bg-blue-50 text-blue-600 border-b-2 border-blue-600' 
+                      : 'text-gray-700 hover:text-blue-600'
+                  }`}
                 >
                   🛒 Giỏ hàng
                 </button>
                 <button 
                   onClick={() => navigate('/orders')}
-                  className="text-gray-700 hover:text-blue-600 font-medium transition-colors px-3 py-2 rounded-lg hover:bg-blue-50"
+                  className={`font-medium transition-colors px-3 py-2 rounded-lg hover:bg-blue-50 ${
+                    isActive('/orders') 
+                      ? 'bg-blue-50 text-blue-600 border-b-2 border-blue-600' 
+                      : 'text-gray-700 hover:text-blue-600'
+                  }`}
                 >
                   📦 Đơn hàng
                 </button>
@@ -93,7 +110,11 @@ export default function Navbar() {
                   
                   <button 
                     onClick={() => navigate('/profile')}
-                    className="bg-gray-100 text-gray-700 px-4 py-2 rounded-xl hover:bg-gray-200 transition-shadow shadow-sm flex items-center gap-1 text-sm"
+                    className={`bg-gray-100 text-gray-700 px-4 py-2 rounded-xl hover:bg-gray-200 transition-shadow shadow-sm flex items-center gap-1 text-sm ${
+                      isActive('/profile') 
+                        ? 'bg-blue-50 text-blue-600 border border-blue-200' 
+                        : ''
+                    }`}
                   >
                     👤 Tài khoản
                   </button>
@@ -134,7 +155,11 @@ export default function Navbar() {
                   navigate('/products');
                   setIsMobileMenuOpen(false);
                 }}
-                className="text-gray-700 hover:text-blue-600 font-medium transition-colors w-full text-left py-2 px-4 rounded-lg hover:bg-blue-50"
+                className={`font-medium transition-colors w-full text-left py-2 px-4 rounded-lg hover:bg-blue-50 ${
+                  isActive('/products') 
+                    ? 'bg-blue-50 text-blue-600 border-l-4 border-blue-600' 
+                    : 'text-gray-700 hover:text-blue-600'
+                }`}
               >
                 🍽️ Thực đơn
               </button>
@@ -146,7 +171,11 @@ export default function Navbar() {
                       navigate("/cart");
                       setIsMobileMenuOpen(false);
                     }}
-                    className="text-gray-700 hover:text-blue-600 font-medium transition-colors w-full text-left py-2 px-4 rounded-lg hover:bg-blue-50 flex items-center gap-1"
+                    className={`font-medium transition-colors w-full text-left py-2 px-4 rounded-lg hover:bg-blue-50 flex items-center gap-1 ${
+                      isActive('/cart') 
+                        ? 'bg-blue-50 text-blue-600 border-l-4 border-blue-600' 
+                        : 'text-gray-700 hover:text-blue-600'
+                    }`}
                   >
                     🛒 Giỏ hàng
                   </button>
@@ -155,7 +184,11 @@ export default function Navbar() {
                       navigate('/orders');
                       setIsMobileMenuOpen(false);
                     }}
-                    className="text-gray-700 hover:text-blue-600 font-medium transition-colors w-full text-left py-2 px-4 rounded-lg hover:bg-blue-50"
+                    className={`font-medium transition-colors w-full text-left py-2 px-4 rounded-lg hover:bg-blue-50 ${
+                      isActive('/orders') 
+                        ? 'bg-blue-50 text-blue-600 border-l-4 border-blue-600' 
+                        : 'text-gray-700 hover:text-blue-600'
+                    }`}
                   >
                     📦 Đơn hàng
                   </button>
@@ -170,7 +203,11 @@ export default function Navbar() {
                         navigate('/profile');
                         setIsMobileMenuOpen(false);
                       }}
-                      className="bg-gray-100 text-gray-700 px-4 py-2 rounded-xl hover:bg-gray-200 transition-shadow shadow-sm flex items-center gap-1 text-sm w-full justify-start"
+                      className={`bg-gray-100 text-gray-700 px-4 py-2 rounded-xl hover:bg-gray-200 transition-shadow shadow-sm flex items-center gap-1 text-sm w-full justify-start ${
+                        isActive('/profile') 
+                          ? 'bg-blue-50 text-blue-600 border border-blue-200' 
+                          : ''
+                      }`}
                     >
                       👤 Tài khoản
                     </button>
