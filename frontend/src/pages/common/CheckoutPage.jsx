@@ -35,6 +35,43 @@ export default function CheckoutPage() {
     }
   };
 
+  // --- HÀM MỚI ĐỂ XÓA CART TRÊN SERVER ---
+  const clearCartOnServer = async () => {
+    // Đảm bảo rằng chúng ta có cart và cart._id để xóa
+    if (!cart || !cart._id) {
+      console.warn("Không tìm thấy cart ID, không thể xóa giỏ hàng.");
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem("token");
+      
+      // Giả định: Backend của bạn có endpoint là DELETE /api/cart/:cartId
+      // Nếu endpoint của bạn khác (ví dụ: POST /api/cart/clear), 
+      // hãy thay đổi 'fetch' bên dưới cho phù hợp.
+      const res = await fetch(`http://localhost:5000/api/cart/${cart._id}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!res.ok) {
+        // Đơn hàng đã thành công, nên không cần báo lỗi (toast) cho user
+        // Chỉ cần log ra để dev biết
+        console.warn("Đã tạo đơn hàng, nhưng không thể xóa giỏ hàng trên server.");
+      }
+      
+      // Xóa luôn state cart ở local để component re-render (dù không cần thiết lắm
+      // vì 'order' state đã được set, nhưng để cho an toàn)
+      setCart(null); 
+
+    } catch (err) {
+      console.error("Lỗi khi xóa giỏ hàng:", err);
+    }
+  };
+  // -----------------------------------------
+
   const handleCreateOrder = async () => {
     if (!cart || !cart.items || cart.items.length === 0) {
       toast.error("Giỏ hàng trống");
@@ -100,6 +137,11 @@ export default function CheckoutPage() {
       toast.success("Tạo đơn thành công");
       // Optionally redirect to order detail or orders list
       // navigate(`/orders/${created._id}`);
+
+      // *** GỌI HÀM XÓA GIỎ HÀNG SAU KHI TẠO ĐƠN THÀNH CÔNG ***
+      await clearCartOnServer();
+      // ******************************************************
+      
     } catch (err) {
       console.error("Create order error:", err);
       toast.error(err.message || "Lỗi khi tạo đơn");

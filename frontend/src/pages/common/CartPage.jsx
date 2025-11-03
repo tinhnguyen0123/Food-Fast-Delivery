@@ -24,6 +24,13 @@ export default function CartPage() {
         headers: { Authorization: `Bearer ${token}` },
       });
 
+      // Nếu không tìm thấy (404), đây KHÔNG PHẢI là lỗi.
+      // Nó có nghĩa là người dùng chưa có giỏ hàng.
+      if (res.status === 404) {
+        setCart(null); // Coi như giỏ hàng trống
+        return; // Dừng hàm tại đây
+      }
+
       if (!res.ok) throw new Error("Failed to fetch cart");
       
       const data = await res.json();
