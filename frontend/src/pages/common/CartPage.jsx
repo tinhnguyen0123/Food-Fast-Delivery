@@ -133,8 +133,12 @@ export default function CartPage() {
   };
 
   const handleCheckout = () => {
-    // TODO: Implement checkout logic
-    toast.info("Tính năng thanh toán đang được phát triển");
+  // Thay thế toast bằng navigation
+  if (!cart || !cart.items || cart.items.length === 0) {
+    toast.error("Giỏ hàng trống");
+    return;
+  }
+  navigate("/orders/new");  // Điều hướng đến trang CheckoutPage
   };
 
   if (loading) {

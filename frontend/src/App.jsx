@@ -9,6 +9,9 @@ import ProfilePage from "./pages/ProfilePage";
 import ProtectedRoute from "./components/ProtectedRoute";
 import ProductsPage from "./pages/common/ProductsPage";
 import CartPage from "./pages/common/CartPage";
+import CheckoutPage from "./pages/common/CheckoutPage";
+import OrdersPage from "./pages/common/OrdersPage";
+import OrderDetailPage from "./pages/common/OrderDetailPage";
 
 
 function App() {
@@ -41,6 +44,16 @@ function App() {
           <Route path="/profile" element={
             <ProtectedRoute>
               <ProfilePage />
+            </ProtectedRoute>
+          } />
+          <Route path="/orders" element={
+            <ProtectedRoute>
+              <OrdersPage />
+            </ProtectedRoute>
+          } />
+          <Route path="/orders/:id" element={
+            <ProtectedRoute>
+              <OrderDetailPage />
             </ProtectedRoute>
           } />
           <Route path="/cart" element={
