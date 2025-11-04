@@ -65,6 +65,8 @@ export default function PaymentPage() {
     const controller = new AbortController();
     searchAbortRef.current = controller;
 
+
+    
     try {
       const delta = 0.3;
       const minLat = position.lat - delta;
