@@ -290,7 +290,7 @@ export default function PaymentPage() {
             <MapClickHandler />
             <MapUpdater position={position} />
           </MapContainer>
-</div>
+        </div>
 
         <textarea
           readOnly
