@@ -1,7 +1,7 @@
-import { Routes, Route } from "react-router-dom";  // Xóa Link, useNavigate, useLocation vì không cần nữa
+import { Routes, Route } from "react-router-dom";  
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-import Navbar from './components/Navbar';  // Import Navbar ở đây
+import Navbar from './components/Navbar'; 
 import HomePage from "./pages/common/HomePage";
 import LoginPage from "./pages/common/LoginPage";
 import RegisterPage from "./pages/common/RegisterPage";
@@ -12,6 +12,7 @@ import CartPage from "./pages/common/CartPage";
 import CheckoutPage from "./pages/common/CheckoutPage";
 import OrdersPage from "./pages/common/OrdersPage";
 import OrderDetailPage from "./pages/common/OrderDetailPage";
+import PaymentPage from "./pages/common/PaymentPage";
 
 
 function App() {
@@ -66,6 +67,12 @@ function App() {
               <CartPage />
             </ProtectedRoute>
           } />
+          <Route path="/payment" element={
+            <ProtectedRoute>
+              <PaymentPage />
+            </ProtectedRoute>
+          } />
+
          
         </Routes>
       </main>

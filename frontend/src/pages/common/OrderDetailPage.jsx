@@ -80,16 +80,24 @@ export default function OrderDetailPage() {
             </div>
             <div>
               <p className="text-sm text-gray-600">Trạng thái</p>
-              <span className={`px-3 py-1 rounded-full text-sm ${
-                order.status === "completed" ? "bg-green-100 text-green-800" :
-                order.status === "cancelled" ? "bg-red-100 text-red-800" :
-                "bg-blue-100 text-blue-800"
-              }`}>
-                {order.status === "pending" ? "Chờ xử lý" :
-                 order.status === "preparing" ? "Đang chuẩn bị" :
-                 order.status === "delivering" ? "Đang giao" :
-                 order.status === "completed" ? "Đã giao" :
-                 "Đã hủy"}
+              <span
+                className={`px-3 py-1 rounded-full text-sm ${
+                  order.status === "completed"
+                    ? "bg-green-100 text-green-800"
+                    : order.status === "cancelled"
+                    ? "bg-red-100 text-red-800"
+                    : "bg-blue-100 text-blue-800"
+                }`}
+              >
+                {order.status === "pending"
+                  ? "Chờ xử lý"
+                  : order.status === "preparing"
+                  ? "Đang chuẩn bị"
+                  : order.status === "delivering"
+                  ? "Đang giao"
+                  : order.status === "completed"
+                  ? "Đã giao"
+                  : "Đã hủy"}
               </span>
             </div>
           </div>
@@ -98,14 +106,22 @@ export default function OrderDetailPage() {
             <h3 className="font-semibold mb-4">Chi tiết món</h3>
             <div className="space-y-4">
               {order.items.map((item) => (
-                <div key={item.productId._id} className="flex justify-between items-center">
+                <div
+                  key={item.productId._id}
+                  className="flex justify-between items-center"
+                >
                   <div>
                     <p className="font-medium">{item.productId.name}</p>
-                    <p className="text-sm text-gray-600">Số lượng: {item.quantity}</p>
+                    <p className="text-sm text-gray-600">
+                      Số lượng: {item.quantity}
+                    </p>
                   </div>
                   <div className="text-right">
                     <p className="font-medium">
-                      {(item.priceAtOrderTime * item.quantity).toLocaleString("vi-VN")}₫
+                      {(item.priceAtOrderTime * item.quantity).toLocaleString(
+                        "vi-VN"
+                      )}
+                      ₫
                     </p>
                     <p className="text-sm text-gray-600">
                       ({item.priceAtOrderTime?.toLocaleString("vi-VN")}₫/món)
@@ -115,6 +131,21 @@ export default function OrderDetailPage() {
               ))}
             </div>
           </div>
+
+          {/* ✅ Thêm phần hiển thị địa chỉ giao hàng */}
+          {order.shippingAddress && (
+            <div className="border-t mt-6 pt-6">
+              <h3 className="font-semibold mb-4">Địa chỉ giao hàng</h3>
+              <p className="text-gray-700">{order.shippingAddress.text}</p>
+              {order.shippingAddress.location && (
+                <p className="text-sm text-gray-500 mt-2">
+                  📍 Tọa độ:{" "}
+                  {order.shippingAddress.location.lat.toFixed(4)},{" "}
+                  {order.shippingAddress.location.lng.toFixed(4)}
+                </p>
+              )}
+            </div>
+          )}
 
           {order.restaurantId && (
             <div className="border-t mt-6 pt-6">
@@ -129,7 +160,9 @@ export default function OrderDetailPage() {
               <div>
                 <p className="text-gray-600">Phương thức thanh toán</p>
                 <p className="font-medium">
-                  {order.paymentMethod === "COD" ? "Thanh toán khi nhận hàng" : "Đã thanh toán"}
+                  {order.paymentMethod === "COD"
+                    ? "Thanh toán khi nhận hàng"
+                    : "Đã thanh toán"}
                 </p>
               </div>
               <div className="text-right">

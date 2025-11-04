@@ -5,8 +5,6 @@ import { toast } from "react-toastify";
 export default function CheckoutPage() {
   const navigate = useNavigate();
   const [cart, setCart] = useState(null);
-  const [creating, setCreating] = useState(false);
-  const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -35,139 +33,10 @@ export default function CheckoutPage() {
     }
   };
 
-  // --- HÀM MỚI ĐỂ XÓA CART TRÊN SERVER ---
-  const clearCartOnServer = async () => {
-    // Đảm bảo rằng chúng ta có cart và cart._id để xóa
-    if (!cart || !cart._id) {
-      console.warn("Không tìm thấy cart ID, không thể xóa giỏ hàng.");
-      return;
-    }
-
-    try {
-      const token = localStorage.getItem("token");
-      
-      // Giả định: Backend của bạn có endpoint là DELETE /api/cart/:cartId
-      // Nếu endpoint của bạn khác (ví dụ: POST /api/cart/clear), 
-      // hãy thay đổi 'fetch' bên dưới cho phù hợp.
-      const res = await fetch(`http://localhost:5000/api/cart/${cart._id}`, {
-        method: "DELETE",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (!res.ok) {
-        // Đơn hàng đã thành công, nên không cần báo lỗi (toast) cho user
-        // Chỉ cần log ra để dev biết
-        console.warn("Đã tạo đơn hàng, nhưng không thể xóa giỏ hàng trên server.");
-      }
-      
-      // Xóa luôn state cart ở local để component re-render (dù không cần thiết lắm
-      // vì 'order' state đã được set, nhưng để cho an toàn)
-      setCart(null); 
-
-    } catch (err) {
-      console.error("Lỗi khi xóa giỏ hàng:", err);
-    }
-  };
-  // -----------------------------------------
-
-  const handleCreateOrder = async () => {
-    if (!cart || !cart.items || cart.items.length === 0) {
-      toast.error("Giỏ hàng trống");
-      return;
-    }
-
-    setCreating(true);
-    try {
-      const token = localStorage.getItem("token");
-      const user = JSON.parse(localStorage.getItem("user") || "{}");
-      // Lấy thông tin đầy đủ của từng product để có restaurantId và giá
-      const itemsFull = await Promise.all(
-        cart.items.map(async (it) => {
-          const pid = it.productId._id || it.productId;
-          const r = await fetch(`http://localhost:5000/api/product/${pid}`);
-          if (!r.ok) throw new Error("Không thể lấy thông tin sản phẩm");
-          const p = await r.json();
-          return { product: p, quantity: it.quantity };
-        })
-      );
-
-      // Lấy restaurantId từ item đầu tiên
-      const restaurantId = itemsFull[0].product.restaurantId?._id || itemsFull[0].product.restaurantId;
-
-      // Nếu nhiều nhà hàng trong cùng 1 giỏ -> báo lỗi (đơn giản)
-      const hasMultiRestaurant = itemsFull.some(
-        (it) => (it.product.restaurantId?._id || it.product.restaurantId) !== restaurantId
-      );
-      if (hasMultiRestaurant) {
-        toast.error("Hiện không hỗ trợ đặt nhiều nhà hàng trong cùng 1 đơn. Vui lòng tách giỏ.");
-        setCreating(false);
-        return;
-      }
-
-      const payload = {
-        userId: user.id || user._id,
-        restaurantId,
-        items: itemsFull.map((it) => ({
-          productId: it.product._id,
-          quantity: it.quantity,
-          priceAtOrderTime: it.product.price,
-        })),
-        totalPrice: cart.totalPrice,
-        paymentMethod: "COD",
-      };
-
-      const res = await fetch("http://localhost:5000/api/order", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(payload),
-      });
-
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.message || "Tạo đơn thất bại");
-      }
-
-      const created = await res.json();
-      // Chúng ta sẽ tự "populate" lại object order bằng
-      // data đầy đủ từ biến `itemsFull` mà ta đã lấy trước đó.
-      const populatedOrder = {
-        ...created, // Giữ nguyên các thông tin cấp cao (_id, status, totalPrice...)
-        items: created.items.map(orderItem => {
-          // Tìm thông tin sản phẩm đầy đủ tương ứng
-          const fullItemInfo = itemsFull.find(
-            (full) => full.product._id === orderItem.productId
-          );
-
-          return {
-            ...orderItem, // Lấy quantity, priceAtOrderTime...
-            // Ghi đè `productId` (đang là string) 
-            // bằng object product đầy đủ.
-            productId: fullItemInfo ? fullItemInfo.product : { _id: orderItem.productId, name: "Sản phẩm lỗi" }
-          };
-        })
-      };
-      // ---------------------
-
-      setOrder(populatedOrder); // <-- Dùng order đã được populate
-      toast.success("Tạo đơn thành công");
-      // Optionally redirect to order detail or orders list
-      // navigate(`/orders/${created._id}`);
-
-      // *** GỌI HÀM XÓA GIỎ HÀNG SAU KHI TẠO ĐƠN THÀNH CÔNG ***
-      await clearCartOnServer();
-      // ******************************************************
-      
-    } catch (err) {
-      console.error("Create order error:", err);
-      toast.error(err.message || "Lỗi khi tạo đơn");
-    } finally {
-      setCreating(false);
-    }
+  // ✅ THAY TOÀN BỘ HÀM handleCreateOrder
+  const handleCreateOrder = () => {
+    // Thay vì gọi API tạo đơn, chuyển sang trang thanh toán
+    navigate("/payment");
   };
 
   if (loading) {
@@ -179,58 +48,46 @@ export default function CheckoutPage() {
     );
   }
 
-  if (order) {
-    return (
-      <div className="max-w-3xl mx-auto">
-        <h2 className="text-2xl font-bold mb-4">Đơn hàng đã tạo</h2>
-        <div className="bg-white p-6 rounded shadow">
-          <p className="mb-2"><strong>Mã đơn hàng:</strong> {order._id}</p>
-          <p className="mb-4"><strong>Trạng thái:</strong> {order.status}</p>
-          <div className="mb-4">
-            {order.items.map((it) => (
-              <div key={it.productId} className="flex justify-between py-2 border-b">
-                <div>
-                  <div className="font-semibold">{it.productId.name || it.productId}</div>
-                  <div className="text-sm text-gray-500">Số lượng: {it.quantity}</div>
-                </div>
-                <div className="font-bold text-green-600">{(it.priceAtOrderTime || 0).toLocaleString("vi-VN")}₫</div>
-              </div>
-            ))}
-          </div>
-          <div className="flex justify-between items-center mt-4">
-            <div className="text-xl font-bold">Tổng: {(order.totalPrice || 0).toLocaleString("vi-VN")}₫</div>
-            <button onClick={() => navigate("/orders")} className="text-blue-600 hover:underline">Xem tất cả đơn hàng</button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="max-w-3xl mx-auto">
       <h2 className="text-2xl font-bold mb-4">Xác nhận đặt hàng</h2>
 
       <div className="bg-white p-6 rounded shadow mb-6">
         {cart?.items?.map((it) => (
-          <div key={it.productId._id || it.productId} className="flex justify-between py-2 border-b">
+          <div
+            key={it.productId._id || it.productId}
+            className="flex justify-between py-2 border-b"
+          >
             <div>
               <div className="font-semibold">{it.productId.name}</div>
               <div className="text-sm text-gray-500">Số lượng: {it.quantity}</div>
             </div>
-            <div className="font-bold text-green-600">{(it.productId.price * it.quantity).toLocaleString("vi-VN")}₫</div>
+            <div className="font-bold text-green-600">
+              {(it.productId.price * it.quantity).toLocaleString("vi-VN")}₫
+            </div>
           </div>
         ))}
 
         <div className="flex justify-between mt-4">
           <div className="font-semibold">Tổng tiền</div>
-          <div className="font-bold text-xl text-green-600">{cart?.totalPrice?.toLocaleString("vi-VN")}₫</div>
+          <div className="font-bold text-xl text-green-600">
+            {cart?.totalPrice?.toLocaleString("vi-VN")}₫
+          </div>
         </div>
       </div>
 
       <div className="flex gap-4">
-        <button onClick={() => navigate("/cart")} className="flex-1 bg-gray-200 py-3 rounded">Quay lại giỏ</button>
-        <button onClick={handleCreateOrder} disabled={creating} className="flex-1 bg-blue-600 text-white py-3 rounded hover:bg-blue-700">
-          {creating ? "Đang tạo đơn..." : "Xác nhận và đặt hàng"}
+        <button
+          onClick={() => navigate("/cart")}
+          className="flex-1 bg-gray-200 py-3 rounded"
+        >
+          Quay lại giỏ
+        </button>
+        <button
+          onClick={handleCreateOrder}
+          className="flex-1 bg-blue-600 text-white py-3 rounded hover:bg-blue-700"
+        >
+          Tiếp tục thanh toán
         </button>
       </div>
     </div>
