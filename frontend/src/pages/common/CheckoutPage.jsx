@@ -133,8 +133,28 @@ export default function CheckoutPage() {
       }
 
       const created = await res.json();
-      setOrder(created);
-      toast.success("Tạo đơn thành công");
+      // Chúng ta sẽ tự "populate" lại object order bằng
+      // data đầy đủ từ biến `itemsFull` mà ta đã lấy trước đó.
+      const populatedOrder = {
+        ...created, // Giữ nguyên các thông tin cấp cao (_id, status, totalPrice...)
+        items: created.items.map(orderItem => {
+          // Tìm thông tin sản phẩm đầy đủ tương ứng
+          const fullItemInfo = itemsFull.find(
+            (full) => full.product._id === orderItem.productId
+          );
+
+          return {
+            ...orderItem, // Lấy quantity, priceAtOrderTime...
+            // Ghi đè `productId` (đang là string) 
+            // bằng object product đầy đủ.
+            productId: fullItemInfo ? fullItemInfo.product : { _id: orderItem.productId, name: "Sản phẩm lỗi" }
+          };
+        })
+      };
+      // ---------------------
+
+      setOrder(populatedOrder); // <-- Dùng order đã được populate
+      toast.success("Tạo đơn thành công");
       // Optionally redirect to order detail or orders list
       // navigate(`/orders/${created._id}`);
 
@@ -164,7 +184,7 @@ export default function CheckoutPage() {
       <div className="max-w-3xl mx-auto">
         <h2 className="text-2xl font-bold mb-4">Đơn hàng đã tạo</h2>
         <div className="bg-white p-6 rounded shadow">
-          <p className="mb-2"><strong>Order ID:</strong> {order._id}</p>
+          <p className="mb-2"><strong>Mã đơn hàng:</strong> {order._id}</p>
           <p className="mb-4"><strong>Trạng thái:</strong> {order.status}</p>
           <div className="mb-4">
             {order.items.map((it) => (
