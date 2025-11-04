@@ -10,14 +10,14 @@ class CartRepository {
   // Lấy giỏ hàng mới nhất của user
   async getLatestCartByUser(userId) {
     return await Cart.findOne({ userId })
-      .populate("items.productId", "name price")
+      .populate("items.productId", "name price image")
       .sort({ createdAt: -1 });
   }
 
   // Lấy giỏ hàng theo ID
   async getCartById(cartId) {
     return await Cart.findById(cartId)
-      .populate("items.productId", "name price");
+      .populate("items.productId", "name price image");
   }
 
   // Thêm sản phẩm vào giỏ hàng
