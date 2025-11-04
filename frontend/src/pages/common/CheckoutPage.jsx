@@ -164,7 +164,7 @@ export default function CheckoutPage() {
       <div className="max-w-3xl mx-auto">
         <h2 className="text-2xl font-bold mb-4">Đơn hàng đã tạo</h2>
         <div className="bg-white p-6 rounded shadow">
-          <p className="mb-2"><strong>Order ID:</strong> {order._id}</p>
+          <p className="mb-2"><strong>Mã đơn hàng:</strong> {order._id}</p>
           <p className="mb-4"><strong>Trạng thái:</strong> {order.status}</p>
           <div className="mb-4">
             {order.items.map((it) => (
