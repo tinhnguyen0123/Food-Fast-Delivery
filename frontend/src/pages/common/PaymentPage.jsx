@@ -279,7 +279,7 @@ export default function PaymentPage() {
           </div>
         )}
 
-        <div className="h-64 mb-3">
+        <div className="h-64 mb-3 relative z-0">
           <MapContainer
             center={[position.lat, position.lng]}
             zoom={13}
@@ -290,7 +290,7 @@ export default function PaymentPage() {
             <MapClickHandler />
             <MapUpdater position={position} />
           </MapContainer>
-        </div>
+</div>
 
         <textarea
           readOnly
