@@ -20,6 +20,10 @@ class ProductRepository {
 
   // Lấy product theo category (ví dụ: noodle, drink, fastfood)
   async getProductsByCategory(category) {
+    if (!category || category === "all") {
+      // Trả về tất cả sản phẩm
+      return await Product.find().sort({ createdAt: -1 });
+    }
     return await Product.find({ category }).sort({ createdAt: -1 });
   }
 

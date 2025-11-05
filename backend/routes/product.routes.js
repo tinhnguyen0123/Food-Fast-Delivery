@@ -8,9 +8,9 @@ const upload = multer({ dest: "uploads/" });
 
 // CRUD routes
 productRouter.post("/", verifyToken, upload.single("image"), ProductController.create);
-productRouter.get("/:id", ProductController.getById);
 productRouter.get("/restaurant/:restaurantId", ProductController.getByRestaurant);
 productRouter.get("/category/:category", ProductController.getByCategory);
+productRouter.get("/:id", ProductController.getById);
 productRouter.put("/:id", verifyToken, upload.single("image"), ProductController.update);
 productRouter.delete("/:id", verifyToken, ProductController.delete);
 
