@@ -33,7 +33,6 @@ export default function LoginPage() {
       const data = await response.json();
 
       if (response.ok) {
-        // ✅ Hiển thị message từ backend
         toast.success(data.message || 'Đăng nhập thành công!', {
           position: "top-right",
           autoClose: 2000,
@@ -46,7 +45,6 @@ export default function LoginPage() {
           window.location.href = '/';
         }, 1500);
       } else {
-        // ❌ Hiển thị lỗi từ backend
         toast.error(data.message || 'Đăng nhập thất bại!', {
           position: "top-right",
           autoClose: 3000,

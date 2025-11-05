@@ -1,26 +1,31 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { toast } from "react-toastify";
+import { Search } from "lucide-react";  
 import ProductCard from "../../components/ProductCard";
 
 export default function ProductsPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const params = new URLSearchParams(location.search);
-  const category = params.get("category") || "food";
+  const category = params.get("category") || "all";
 
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [query, setQuery] = useState(""); 
 
   useEffect(() => {
     fetchProducts();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [category]);
 
   const fetchProducts = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`http://localhost:5000/api/product/category/${encodeURIComponent(category)}`);
+      const res = await fetch(
+        `http://localhost:5000/api/product/category/${encodeURIComponent(
+          category
+        )}`
+      );
       if (!res.ok) {
         const err = await res.json();
         throw new Error(err.message || "Failed to load products");
@@ -44,7 +49,7 @@ export default function ProductsPage() {
     }
 
     try {
-      // 1) Lấy giỏ gần nhất
+      // 1️⃣ Lấy giỏ gần nhất
       let res = await fetch("http://localhost:5000/api/cart/latest", {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -62,7 +67,7 @@ export default function ProductsPage() {
         cart = await res.json();
       }
 
-      // 2) Thêm item
+      // 2️⃣ Thêm item
       const addRes = await fetch("http://localhost:5000/api/cart/add", {
         method: "POST",
         headers: {
@@ -88,6 +93,11 @@ export default function ProductsPage() {
     }
   };
 
+  // ✅ Lọc client-side theo tên sản phẩm
+  const filteredProducts = products.filter((p) =>
+    p.name?.toLowerCase().includes(query.trim().toLowerCase())
+  );
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-60">
@@ -101,16 +111,37 @@ export default function ProductsPage() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-bold">Danh sách món ({category})</h2>
-        <div className="text-sm text-gray-600">Tổng: {products.length}</div>
+      {/* 🔍 Thanh tiêu đề và tìm kiếm */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 gap-4">
+        <h2 className="text-2xl font-bold text-gray-800">
+          Danh sách món ({category})
+        </h2>
+
+        {/* ✅ Ô tìm kiếm có icon và hiệu ứng focus */}
+        <div className="relative w-full sm:w-72">
+          <Search className="absolute left-3 top-2.5 text-gray-400 w-5 h-5" />
+          <input
+            type="text"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Tìm món theo tên..."
+            className="w-full pl-10 pr-4 py-2 border rounded-xl shadow-sm text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200"
+          />
+        </div>
+
+        <div className="text-sm text-gray-600">
+          Tổng: {filteredProducts.length}
+        </div>
       </div>
 
-      {products.length === 0 ? (
-        <div className="text-center text-gray-500">Chưa có món nào</div>
+      {/* 🔽 Hiển thị danh sách sản phẩm */}
+      {filteredProducts.length === 0 ? (
+        <div className="text-center text-gray-500">
+          Không có món nào phù hợp
+        </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-          {products.map((p) => (
+          {filteredProducts.map((p) => (
             <ProductCard key={p._id} product={p} onAdd={handleAddToCart} />
           ))}
         </div>

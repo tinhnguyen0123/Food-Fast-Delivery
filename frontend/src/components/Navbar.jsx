@@ -60,7 +60,7 @@ export default function Navbar() {
           
           {/* LOGO */}
           <div
-            onClick={() => navigate('/')}
+            onClick={() => navigate('/products')}
             className={`text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent cursor-pointer hover:scale-105 transition-transform ${
               isActive('/') ? 'scale-105' : ''
             }`}
