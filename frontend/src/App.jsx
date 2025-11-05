@@ -1,44 +1,21 @@
-import { Routes, Route, Link, useNavigate, useLocation } from "react-router-dom";
-import { useState, useEffect } from "react";
+import { Routes, Route } from "react-router-dom";  
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import Navbar from './components/Navbar'; 
 import HomePage from "./pages/common/HomePage";
 import LoginPage from "./pages/common/LoginPage";
 import RegisterPage from "./pages/common/RegisterPage";
 import ProfilePage from "./pages/ProfilePage";
 import ProtectedRoute from "./components/ProtectedRoute";
+import ProductsPage from "./pages/common/ProductsPage";
+import CartPage from "./pages/common/CartPage";
+import CheckoutPage from "./pages/common/CheckoutPage";
+import OrdersPage from "./pages/common/OrdersPage";
+import OrderDetailPage from "./pages/common/OrderDetailPage";
+import PaymentPage from "./pages/common/PaymentPage";
+
 
 function App() {
-  const navigate = useNavigate();
-  const location = useLocation();
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [user, setUser] = useState(null);
-
-  useEffect(() => {
-    checkLoginStatus();
-  }, [location]);
-
-  const checkLoginStatus = () => {
-    const token = localStorage.getItem('token');
-    const userData = localStorage.getItem('user');
-    
-    if (token && userData) {
-      setIsLoggedIn(true);
-      setUser(JSON.parse(userData));
-    } else {
-      setIsLoggedIn(false);
-      setUser(null);
-    }
-  };
-
-  const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    setIsLoggedIn(false);
-    setUser(null);
-    navigate('/login');
-  };
-
   return (
     <div className="min-h-screen bg-blue-50 text-gray-800">
       <ToastContainer
@@ -54,56 +31,49 @@ function App() {
         theme="light"
       />
 
-      <header className="flex items-center justify-between p-4 bg-blue-600 text-white shadow-md">
-        <h1 
-          onClick={() => navigate('/')}
-          className="text-xl font-bold cursor-pointer hover:text-blue-200"
-        >
-          🚁 FoodFast Drone Delivery
-        </h1>
-        
-        <nav className="flex items-center space-x-4">
-          <Link to="/" className="hover:underline">Trang chủ</Link>
-          
-          {isLoggedIn ? (
-            <>
-              <button 
-                onClick={() => navigate('/profile')}
-                className="hover:underline"
-              >
-                👤 Tài khoản
-              </button>
-              <span className="text-blue-100">
-                Xin chào, <span className="font-semibold">{user?.name}</span>
-              </span>
-              <button 
-                onClick={handleLogout}
-                className="bg-red-600 px-3 py-1 rounded hover:bg-red-700 transition"
-              >
-                Đăng xuất
-              </button>
-            </>
-          ) : (
-            <>
-              <Link to="/login" className="hover:underline">Đăng nhập</Link>
-              <Link to="/register" className="hover:underline">Đăng ký</Link>
-            </>
-          )}
-        </nav>
-      </header>
+      {/* Thay header cũ bằng Navbar */}
+      { <Navbar />}
 
       <main className="p-6">
         <Routes>
           <Route path="/" element={<HomePage />} />
+          <Route path="/products" element={<ProductsPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
           
-          {/* Protected Routes */}
+          {/* Protected Routes - giữ nguyên, nó sẽ tự check token */}
           <Route path="/profile" element={
             <ProtectedRoute>
               <ProfilePage />
             </ProtectedRoute>
           } />
+          <Route path="/orders/new" element={
+            <ProtectedRoute>
+              <CheckoutPage />
+            </ProtectedRoute>
+          } />
+          <Route path="/orders" element={
+            <ProtectedRoute>
+              <OrdersPage />
+            </ProtectedRoute>
+          } />
+          <Route path="/orders/:id" element={
+            <ProtectedRoute>
+              <OrderDetailPage />
+            </ProtectedRoute>
+          } />
+          <Route path="/cart" element={
+            <ProtectedRoute>
+              <CartPage />
+            </ProtectedRoute>
+          } />
+          <Route path="/payment" element={
+            <ProtectedRoute>
+              <PaymentPage />
+            </ProtectedRoute>
+          } />
+
+         
         </Routes>
       </main>
     </div>

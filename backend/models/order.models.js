@@ -8,18 +8,27 @@ const orderSchema = new mongoose.Schema(
       {
         productId: { type: mongoose.Schema.Types.ObjectId, ref: "Product", required: true },
         quantity: Number,
-        priceAtOrderTime: Number
-      }
+        priceAtOrderTime: Number,
+      },
     ],
     status: {
       type: String,
       enum: ["pending", "preparing", "delivering", "completed", "cancelled"],
-      default: "pending"
+      default: "pending",
     },
     totalPrice: Number,
     paymentMethod: { type: String, enum: ["COD", "VNPAY"] },
     paymentId: { type: mongoose.Schema.Types.ObjectId, ref: "Payment" },
     deliveryId: { type: mongoose.Schema.Types.ObjectId, ref: "Delivery" },
+
+    // ✅ Thêm địa chỉ giao hàng
+    shippingAddress: {
+      text: String,
+      location: {
+        lat: Number,
+        lng: Number,
+      },
+    },
   },
   { timestamps: true }
 );

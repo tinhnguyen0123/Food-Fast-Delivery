@@ -12,6 +12,11 @@ export default function ProfilePage() {
     phone: '',
   });
 
+  // 🔹 State đổi mật khẩu
+  const [pwd, setPwd] = useState({ oldPassword: '', newPassword: '', confirmPassword: '' });
+  const [pwLoading, setPwLoading] = useState(false);
+  const [showPwdForm, setShowPwdForm] = useState(false);
+
   useEffect(() => {
     fetchUserProfile();
   }, []);
@@ -34,7 +39,6 @@ export default function ProfilePage() {
         });
       } else {
         toast.error('Không thể tải thông tin tài khoản');
-        // Token hết hạn, redirect về login
         if (response.status === 401) {
           localStorage.removeItem('token');
           localStorage.removeItem('user');
@@ -77,8 +81,7 @@ export default function ProfilePage() {
         toast.success('Cập nhật thông tin thành công!');
         setUser(data);
         setIsEditing(false);
-        
-        // Cập nhật localStorage
+
         const storedUser = JSON.parse(localStorage.getItem('user'));
         localStorage.setItem('user', JSON.stringify({
           ...storedUser,
@@ -102,6 +105,60 @@ export default function ProfilePage() {
       phone: user.phone || '',
     });
     setIsEditing(false);
+  };
+
+  // 🔹 Hàm đổi mật khẩu
+  const handleChangePassword = async (e) => {
+    e.preventDefault();
+    if (!pwd.oldPassword || !pwd.newPassword) {
+      toast.error('Vui lòng nhập đầy đủ mật khẩu cũ và mới');
+      return;
+    }
+    if (pwd.newPassword.length < 3) {
+      toast.error('Mật khẩu mới phải từ 3 ký tự');
+      return;
+    }
+    if (pwd.newPassword !== pwd.confirmPassword) {
+      toast.error('Xác nhận mật khẩu không khớp');
+      return;
+    }
+
+    setPwLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch('http://localhost:5000/api/auth/change-password', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          oldPassword: pwd.oldPassword,
+          newPassword: pwd.newPassword,
+        }),
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        toast.success(data.message || 'Đổi mật khẩu thành công');
+        setPwd({ oldPassword: '', newPassword: '', confirmPassword: '' });
+        setShowPwdForm(false);
+      } else {
+        if (res.status === 401) {
+          toast.error('Phiên đăng nhập hết hạn, vui lòng đăng nhập lại');
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+          navigate('/login');
+        } else {
+          toast.error(data.message || 'Đổi mật khẩu thất bại');
+        }
+      }
+    } catch (err) {
+      console.error('Change password error:', err);
+      toast.error('Lỗi kết nối server');
+    } finally {
+      setPwLoading(false);
+    }
   };
 
   if (loading && !user) {
@@ -129,28 +186,24 @@ export default function ProfilePage() {
           ← Quay lại
         </button>
       </div>
-      
+
       <div className="bg-white p-8 rounded-lg shadow-md">
         {!isEditing ? (
-          // View Mode
           <>
             <div className="mb-6">
               <label className="text-sm text-gray-500 uppercase tracking-wide">Họ và tên</label>
               <p className="text-xl font-semibold text-gray-800 mt-1">{user?.name}</p>
             </div>
-            
             <div className="mb-6">
               <label className="text-sm text-gray-500 uppercase tracking-wide">Email</label>
               <p className="text-xl font-semibold text-gray-800 mt-1">{user?.email}</p>
             </div>
-            
             <div className="mb-6">
               <label className="text-sm text-gray-500 uppercase tracking-wide">Số điện thoại</label>
               <p className="text-xl font-semibold text-gray-800 mt-1">
                 {user?.phone || <span className="text-gray-400 italic">Chưa cập nhật</span>}
               </p>
             </div>
-            
             <div className="mb-6">
               <label className="text-sm text-gray-500 uppercase tracking-wide">Vai trò</label>
               <p className="text-xl font-semibold text-gray-800 mt-1">
@@ -164,28 +217,29 @@ export default function ProfilePage() {
                 </span>
               </p>
             </div>
-            
             <div className="mb-6">
               <label className="text-sm text-gray-500 uppercase tracking-wide">Ngày tạo tài khoản</label>
               <p className="text-xl font-semibold text-gray-800 mt-1">
                 {new Date(user?.createdAt).toLocaleDateString('vi-VN')}
               </p>
             </div>
-            
             <button
               onClick={() => setIsEditing(true)}
-              className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition w-full"
+              className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition w-full mb-3"
             >
               ✏️ Chỉnh sửa thông tin
             </button>
+            <button
+              onClick={() => setShowPwdForm((v) => !v)}
+              className="bg-gray-800 text-white px-6 py-3 rounded-lg hover:bg-black transition w-full"
+            >
+              🔒 {showPwdForm ? 'Đóng đổi mật khẩu' : 'Đổi mật khẩu'}
+            </button>
           </>
         ) : (
-          // Edit Mode
           <form onSubmit={handleUpdate}>
             <div className="mb-6">
-              <label className="block text-sm text-gray-700 font-semibold mb-2">
-                Họ và tên
-              </label>
+              <label className="block text-sm text-gray-700 font-semibold mb-2">Họ và tên</label>
               <input
                 type="text"
                 name="name"
@@ -195,11 +249,8 @@ export default function ProfilePage() {
                 required
               />
             </div>
-            
             <div className="mb-6">
-              <label className="block text-sm text-gray-700 font-semibold mb-2">
-                Email (không thể thay đổi)
-              </label>
+              <label className="block text-sm text-gray-700 font-semibold mb-2">Email (không thể thay đổi)</label>
               <input
                 type="email"
                 value={user?.email}
@@ -207,11 +258,8 @@ export default function ProfilePage() {
                 className="border border-gray-200 p-3 w-full rounded-lg bg-gray-100 text-gray-500 cursor-not-allowed"
               />
             </div>
-            
             <div className="mb-6">
-              <label className="block text-sm text-gray-700 font-semibold mb-2">
-                Số điện thoại
-              </label>
+              <label className="block text-sm text-gray-700 font-semibold mb-2">Số điện thoại</label>
               <input
                 type="tel"
                 name="phone"
@@ -221,7 +269,6 @@ export default function ProfilePage() {
                 placeholder="Nhập số điện thoại"
               />
             </div>
-            
             <div className="flex gap-4">
               <button
                 type="submit"
@@ -241,6 +288,74 @@ export default function ProfilePage() {
           </form>
         )}
       </div>
+
+      {showPwdForm && (
+        <div className="bg-white p-8 rounded-lg shadow-md mt-8">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-xl font-semibold">Đổi mật khẩu</h3>
+            <button
+              type="button"
+              onClick={() => { setShowPwdForm(false); setPwd({ oldPassword:'', newPassword:'', confirmPassword:'' }); }}
+              className="text-sm text-gray-600 hover:underline"
+            >
+              Hủy
+            </button>
+          </div>
+          <form onSubmit={handleChangePassword} className="grid gap-4">
+            <div>
+              <label className="block text-sm text-gray-700 font-semibold mb-2">Mật khẩu hiện tại</label>
+              <input
+                type="password"
+                value={pwd.oldPassword}
+                onChange={(e) => setPwd({ ...pwd, oldPassword: e.target.value })}
+                className="border border-gray-300 p-3 w-full rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Nhập mật khẩu hiện tại"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm text-gray-700 font-semibold mb-2">Mật khẩu mới</label>
+              <input
+                type="password"
+                value={pwd.newPassword}
+                onChange={(e) => setPwd({ ...pwd, newPassword: e.target.value })}
+                className="border border-gray-300 p-3 w-full rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Nhập mật khẩu mới"
+                required
+                minLength={3}
+              />
+            </div>
+            <div>
+              <label className="block text-sm text-gray-700 font-semibold mb-2">Xác nhận mật khẩu mới</label>
+              <input
+                type="password"
+                value={pwd.confirmPassword}
+                onChange={(e) => setPwd({ ...pwd, confirmPassword: e.target.value })}
+                className="border border-gray-300 p-3 w-full rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Nhập lại mật khẩu mới"
+                required
+                minLength={3}
+              />
+            </div>
+            <div className="flex gap-3">
+              <button
+                type="submit"
+                disabled={pwLoading}
+                className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition disabled:bg-gray-400"
+              >
+                {pwLoading ? 'Đang đổi mật khẩu...' : 'Đổi mật khẩu'}
+              </button>
+              <button
+                type="button"
+                onClick={() => { setShowPwdForm(false); setPwd({ oldPassword:'', newPassword:'', confirmPassword:'' }); }}
+                className="bg-gray-200 px-6 py-3 rounded-lg hover:bg-gray-300 transition"
+              >
+                Hủy
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
     </div>
   );
 }

@@ -10,14 +10,14 @@ class CartRepository {
   // Lấy giỏ hàng mới nhất của user
   async getLatestCartByUser(userId) {
     return await Cart.findOne({ userId })
-      .populate("items.productId", "name price")
+      .populate("items.productId", "name price image")
       .sort({ createdAt: -1 });
   }
 
   // Lấy giỏ hàng theo ID
   async getCartById(cartId) {
     return await Cart.findById(cartId)
-      .populate("items.productId", "name price");
+      .populate("items.productId", "name price image");
   }
 
   // Thêm sản phẩm vào giỏ hàng
@@ -25,10 +25,21 @@ class CartRepository {
     const cart = await Cart.findById(cartId);
     if (!cart) throw new Error("Cart not found");
 
-    const existingItem = cart.items.find(item => item.productId.toString() === productId);
-    if (existingItem) {
-      existingItem.quantity += quantity;
-    } else {
+    const existingItemIndex = cart.items.findIndex(
+      (item) => item.productId.toString() === productId
+    );
+
+    if (existingItemIndex > -1) {
+      // Nếu sản phẩm đã tồn tại
+      if (quantity > 0) {
+        // Cập nhật số lượng mới
+        cart.items[existingItemIndex].quantity = quantity; // << SỬA Ở ĐÂY: Dùng = thay vì +=
+      } else {
+        // Nếu số lượng <= 0, xóa khỏi giỏ hàng
+        cart.items.splice(existingItemIndex, 1);
+      }
+    } else if (quantity > 0) {
+      // Nếu là sản phẩm mới và số lượng > 0
       cart.items.push({ productId, quantity });
     }
 

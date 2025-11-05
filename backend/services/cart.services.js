@@ -14,33 +14,53 @@ class CartService {
     return cart;
   }
 
+  // Hàm tính tổng tiền được tối ưu hóa
+  async calculateTotalPrice(cart) {
+    if (!cart || !cart.items || cart.items.length === 0) {
+      return 0;
+    }
+
+    // Lấy thông tin đầy đủ của tất cả sản phẩm trong giỏ hàng
+    const populatedCart = await cart.populate("items.productId", "price");
+
+    // Tính tổng tiền dựa trên dữ liệu đã populate
+    const totalPrice = populatedCart.items.reduce((sum, item) => {
+      // item.productId lúc này là một object đầy đủ, không phải chỉ là ID
+      if (item.productId && item.productId.price) {
+        return sum + item.productId.price * item.quantity;
+      }
+      return sum;
+    }, 0);
+
+    return totalPrice;
+  }
+
   // Thêm sản phẩm vào giỏ hàng
   async addItem(cartId, productId, quantity) {
     const product = await Product.findById(productId);
     if (!product) throw new Error("Sản phẩm không tồn tại");
 
-    const cart = await CartRepository.addItem(cartId, productId, quantity);
-    const totalPrice = cart.items.reduce(async (sumPromise, item) => {
-      const sum = await sumPromise;
-      const prod = await Product.findById(item.productId);
-      return sum + prod.price * item.quantity;
-    }, Promise.resolve(0));
+    // addItem bây giờ sẽ tự xử lý cả việc xóa nếu quantity <= 0
+    let cart = await CartRepository.addItem(cartId, productId, quantity);
 
-    const updatedCart = await CartRepository.updateTotalPrice(cartId, await totalPrice);
-    return updatedCart;
+    // Tính lại tổng tiền
+    const totalPrice = await this.calculateTotalPrice(cart);
+    await CartRepository.updateTotalPrice(cartId, totalPrice);
+    
+    // << SỬA Ở ĐÂY: Trả về giỏ hàng đã được populate đầy đủ
+    return this.getCartById(cartId);
   }
 
   // Xóa sản phẩm khỏi giỏ hàng
   async removeItem(cartId, productId) {
-    const cart = await CartRepository.removeItem(cartId, productId);
-    const totalPrice = cart.items.reduce(async (sumPromise, item) => {
-      const sum = await sumPromise;
-      const prod = await Product.findById(item.productId);
-      return sum + prod.price * item.quantity;
-    }, Promise.resolve(0));
+    let cart = await CartRepository.removeItem(cartId, productId);
 
-    const updatedCart = await CartRepository.updateTotalPrice(cartId, await totalPrice);
-    return updatedCart;
+    // Tính lại tổng tiền
+    const totalPrice = await this.calculateTotalPrice(cart);
+    await CartRepository.updateTotalPrice(cartId, totalPrice);
+
+    // << SỬA Ở ĐÂY: Trả về giỏ hàng đã được populate đầy đủ
+    return this.getCartById(cartId);
   }
 
   // Lấy giỏ hàng theo ID
