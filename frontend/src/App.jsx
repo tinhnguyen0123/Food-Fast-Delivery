@@ -15,6 +15,8 @@ import OrderDetailPage from "./pages/common/OrderDetailPage";
 import PaymentPage from "./pages/common/PaymentPage";
 
 
+
+
 function App() {
   return (
     <div className="min-h-screen bg-blue-50 text-gray-800">
@@ -73,7 +75,7 @@ function App() {
             </ProtectedRoute>
           } />
 
-         
+          
         </Routes>
       </main>
     </div>
