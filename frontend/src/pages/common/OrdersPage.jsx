@@ -67,8 +67,12 @@ export default function OrdersPage() {
     try {
       const token = localStorage.getItem("token");
       const res = await fetch(`http://localhost:5000/api/order/${orderId}`, {
-        method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` },
+        method: "PUT",
+        headers: { 
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}` ,
+         },
+         body: JSON.stringify({ status: "cancelled" }),
       });
 
       if (!res.ok) {

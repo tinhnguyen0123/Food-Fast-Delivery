@@ -1,26 +1,31 @@
-// backend/utils/cloudinary.js
 import { v2 as cloudinary } from "cloudinary";
 
-// Cấu hình Cloudinary
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
   api_key: process.env.CLOUDINARY_API_KEY,
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
-// ✅ Export mặc định để có thể import cloudinary từ nơi khác
-export default cloudinary;
-
-// ✅ Export thêm hàm upload để dùng riêng khi cần
-export const uploadToCloudinary = async (filePath, folder = "FoodFast") => {
+export const uploadToCloudinary = async (file, folder = "restaurants") => {
   try {
-    const result = await cloudinary.uploader.upload(filePath, {
-      folder,
-      resource_type: "auto", // hỗ trợ ảnh, video, file
+    const result = await cloudinary.uploader.upload(file.path, {
+      folder: folder,
     });
-    return result.secure_url; // URL ảnh sau khi upload
+    return {
+      url: result.secure_url,
+      public_id: result.public_id,
+    };
   } catch (error) {
-    console.error("❌ Cloudinary upload error:", error);
-    throw new Error("Không thể upload ảnh lên Cloudinary");
+    throw new Error("Upload failed: " + error.message);
   }
 };
+
+export const deleteFromCloudinary = async (public_id) => {
+  try {
+    await cloudinary.uploader.destroy(public_id);
+  } catch (error) {
+    console.error("Delete from Cloudinary failed:", error);
+  }
+};
+
+export default cloudinary;

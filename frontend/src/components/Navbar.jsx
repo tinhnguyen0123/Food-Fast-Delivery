@@ -91,6 +91,20 @@ export default function Navbar() {
               🍽️ Thực đơn
             </button>
 
+            {/* 🔹 Thêm nút Quản lý nhà hàng cho role restaurant */}
+            {isLoggedIn && user?.role === 'restaurant' && (
+              <button
+                onClick={() => navigate('/restaurant/dashboard')}
+                className={`font-medium transition-colors px-3 py-2 rounded-lg hover:bg-blue-50 ${
+                  isActive('/restaurant/dashboard')
+                    ? 'bg-blue-50 text-blue-600 border-b-2 border-blue-600'
+                    : 'text-gray-700 hover:text-blue-600'
+                }`}
+              >
+                🏪 Quản lý nhà hàng
+              </button>
+            )}
+
             {isLoggedIn ? (
               <>
                 <button
@@ -150,6 +164,19 @@ export default function Navbar() {
                         📦 Đơn hàng
                       </button>
 
+                      {/* 🔹 Thêm nút Quản lý nhà hàng trong dropdown */}
+                      {user?.role === 'restaurant' && (
+                        <button
+                          onClick={() => {
+                            navigate('/restaurant/dashboard');
+                            setIsProfileDropdownOpen(false);
+                          }}
+                          className="w-full text-left px-4 py-2 text-gray-700 hover:bg-blue-50 transition-colors text-sm"
+                        >
+                          🏪 Quản lý nhà hàng
+                        </button>
+                      )}
+
                       <button
                         onClick={handleLogout}
                         className="w-full text-left px-4 py-2 text-red-600 hover:bg-red-50 transition-colors text-sm"
@@ -196,6 +223,23 @@ export default function Navbar() {
               >
                 🍽️ Thực đơn
               </button>
+
+              {/* 🔹 Thêm nút Quản lý nhà hàng cho mobile */}
+              {isLoggedIn && user?.role === 'restaurant' && (
+                <button
+                  onClick={() => {
+                    navigate('/restaurant/dashboard');
+                    setIsMobileMenuOpen(false);
+                  }}
+                  className={`font-medium w-full text-left py-2 px-4 rounded-lg hover:bg-blue-50 ${
+                    isActive('/restaurant/dashboard')
+                      ? 'bg-blue-50 text-blue-600 border-l-4 border-blue-600'
+                      : 'text-gray-700 hover:text-blue-600'
+                  }`}
+                >
+                  🏪 Quản lý nhà hàng
+                </button>
+              )}
 
               {isLoggedIn ? (
                 <>
