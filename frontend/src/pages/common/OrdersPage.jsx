@@ -17,20 +17,43 @@ export default function OrdersPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.state, refreshFlag]);
 
+  // ✅ PHIÊN BẢN loadOrders MỚI
   const loadOrders = async () => {
     try {
       setLoading(true);
       const token = localStorage.getItem("token");
-      const user = JSON.parse(localStorage.getItem("user") || "{}");
+      const user = JSON.parse(localStorage.getItem("user") || "null");
 
-      const res = await fetch(
-        `http://localhost:5000/api/order/user/${user.id || user._id}`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      if (!res.ok) throw new Error("Không thể tải đơn hàng");
+      if (!token || !user) {
+        console.warn("No token/user when loading orders");
+        navigate("/login");
+        return;
+      }
+
+      const res = await fetch(`http://localhost:5000/api/order/user/${user.id || user._id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (res.status === 401) {
+        // token invalid/expired
+        localStorage.removeItem("token");
+        localStorage.removeItem("user");
+        navigate("/login");
+        return;
+      }
+
+      if (res.status === 404) {
+        setOrders([]);
+        return;
+      }
+
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(text || "Không thể tải đơn hàng");
+      }
 
       const data = await res.json();
-      setOrders(data);
+      setOrders(Array.isArray(data) ? data : data.orders || []);
     } catch (err) {
       console.error("Load orders error:", err);
       toast.error(err.message || "Lỗi khi tải đơn hàng");
@@ -68,11 +91,11 @@ export default function OrdersPage() {
       const token = localStorage.getItem("token");
       const res = await fetch(`http://localhost:5000/api/order/${orderId}`, {
         method: "PUT",
-        headers: { 
+        headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}` ,
-         },
-         body: JSON.stringify({ status: "cancelled" }),
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ status: "cancelled" }),
       });
 
       if (!res.ok) {
@@ -180,7 +203,6 @@ export default function OrdersPage() {
                       : "Đã hủy"}
                   </span>
 
-                  {/* ✅ Nút Hủy chỉ hiển thị khi pending hoặc preparing */}
                   {(order.status === "pending" ||
                     order.status === "preparing") && (
                     <button
@@ -196,7 +218,6 @@ export default function OrdersPage() {
                 </div>
               </div>
 
-              {/* ✅ Danh sách món */}
               <div className="border-t pt-4">
                 <h3 className="font-semibold mb-2">Chi tiết món</h3>
                 <div className="space-y-2">
@@ -212,7 +233,6 @@ export default function OrdersPage() {
                 </div>
               </div>
 
-              {/* ✅ Tổng tiền */}
               <div className="mt-4 pt-4 border-t flex justify-between items-center">
                 <div className="text-gray-600">
                   {order.paymentMethod === "COD"

@@ -13,7 +13,8 @@ class RestaurantService {
       const result = await cloudinary.uploader.upload(file.path, {
         folder: "restaurants",
       });
-      data.imageUrl = result.secure_url;
+      // ✅ LƯU ĐÚNG FIELD TRONG SCHEMA
+      data.image = result.secure_url;
     }
 
     const restaurant = await RestaurantRepository.createRestaurant(data);
@@ -45,7 +46,8 @@ class RestaurantService {
       const result = await cloudinary.uploader.upload(file.path, {
         folder: "restaurants",
       });
-      data.imageUrl = result.secure_url;
+      // ✅ LƯU ĐÚNG FIELD TRONG SCHEMA
+      data.image = result.secure_url;
     }
 
     const updated = await RestaurantRepository.updateRestaurant(restaurantId, data);

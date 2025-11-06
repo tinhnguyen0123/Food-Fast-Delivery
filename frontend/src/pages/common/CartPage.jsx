@@ -12,8 +12,10 @@ export default function CartPage() {
     fetchCart();
   }, []);
 
+  // ✅ Đã thay phần fetchCart cũ bằng bản có xử lý token, 401, 404
   const fetchCart = async () => {
     try {
+      setLoading(true);
       const token = localStorage.getItem("token");
       if (!token) {
         navigate("/login");
@@ -24,15 +26,24 @@ export default function CartPage() {
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      // Nếu không tìm thấy (404), đây KHÔNG PHẢI là lỗi.
-      // Nó có nghĩa là người dùng chưa có giỏ hàng.
-      if (res.status === 404) {
-        setCart(null); // Coi như giỏ hàng trống
-        return; // Dừng hàm tại đây
+      if (res.status === 401) {
+        localStorage.removeItem("token");
+        localStorage.removeItem("user");
+        navigate("/login");
+        return;
       }
 
-      if (!res.ok) throw new Error("Failed to fetch cart");
-      
+      if (res.status === 404) {
+        // user chưa có giỏ hàng -> hiển thị trống
+        setCart(null);
+        return;
+      }
+
+      if (!res.ok) {
+        const err = await res.text();
+        throw new Error(err || "Failed to fetch cart");
+      }
+
       const data = await res.json();
       setCart(data);
     } catch (err) {
@@ -46,10 +57,7 @@ export default function CartPage() {
   const handleUpdateQuantity = async (productId, newQuantity) => {
     if (newQuantity < 1) return;
 
-    // Lưu state trước để revert nếu lỗi
     const previousCart = { ...cart };
-
-    // Optimistic update: Cập nhật UI ngay lập tức
     setCart((prevCart) => {
       const newItems = prevCart.items.map((item) =>
         item.productId._id === productId
@@ -57,7 +65,8 @@ export default function CartPage() {
           : item
       );
       const newTotal = newItems.reduce(
-        (sum, item) => sum + (Number(item.productId.price) * item.quantity),
+        (sum, item) =>
+          sum + Number(item.productId.price) * item.quantity,
         0
       );
       return { ...prevCart, items: newItems, totalPrice: newTotal };
@@ -74,7 +83,7 @@ export default function CartPage() {
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
-          cartId: previousCart._id, // Dùng previous để an toàn
+          cartId: previousCart._id,
           productId,
           quantity: newQuantity,
         }),
@@ -82,11 +91,9 @@ export default function CartPage() {
 
       if (!res.ok) throw new Error("Failed to update quantity");
 
-      // Sync với response từ server (nếu backend cập nhật đúng)
       const updatedCart = await res.json();
       setCart(updatedCart);
     } catch (err) {
-      // Revert về state trước
       setCart(previousCart);
       console.error("Update quantity error:", err);
       toast.error(err.message || "Lỗi khi cập nhật số lượng");
@@ -96,13 +103,13 @@ export default function CartPage() {
   };
 
   const handleRemoveItem = async (productId) => {
-    // Lưu state trước để revert nếu lỗi
     const previousCart = { ...cart };
-
-    // Optimistic update: Xóa item ngay lập tức
-    const newItems = cart.items.filter((item) => item.productId._id !== productId);
+    const newItems = cart.items.filter(
+      (item) => item.productId._id !== productId
+    );
     const newTotal = newItems.reduce(
-      (sum, item) => sum + (Number(item.productId.price) * item.quantity),
+      (sum, item) =>
+        sum + Number(item.productId.price) * item.quantity,
       0
     );
     setCart({ ...cart, items: newItems, totalPrice: newTotal });
@@ -125,12 +132,10 @@ export default function CartPage() {
 
       if (!res.ok) throw new Error("Failed to remove item");
 
-      // Sync với response từ server
       const updatedCart = await res.json();
       setCart(updatedCart);
       toast.success("Đã xóa món khỏi giỏ");
     } catch (err) {
-      // Revert về state trước
       setCart(previousCart);
       console.error("Remove item error:", err);
       toast.error(err.message || "Lỗi khi xóa món");
@@ -140,12 +145,11 @@ export default function CartPage() {
   };
 
   const handleCheckout = () => {
-  // Thay thế toast bằng navigation
-  if (!cart || !cart.items || cart.items.length === 0) {
-    toast.error("Giỏ hàng trống");
-    return;
-  }
-  navigate("/orders/new");  // Điều hướng đến trang CheckoutPage
+    if (!cart || !cart.items || cart.items.length === 0) {
+      toast.error("Giỏ hàng trống");
+      return;
+    }
+    navigate("/orders/new");
   };
 
   if (loading) {
@@ -163,7 +167,9 @@ export default function CartPage() {
     return (
       <div className="text-center py-12">
         <h2 className="text-2xl font-bold mb-4">Giỏ hàng trống</h2>
-        <p className="text-gray-600 mb-6">Hãy thêm món ăn vào giỏ để đặt hàng</p>
+        <p className="text-gray-600 mb-6">
+          Hãy thêm món ăn vào giỏ để đặt hàng
+        </p>
         <button
           onClick={() => navigate("/products")}
           className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition"
@@ -190,7 +196,7 @@ export default function CartPage() {
         <div className="p-6">
           {cart.items.map((item) => (
             <div
-              key={`${item.productId._id}-${item.quantity}`} // Key ổn định hơn với quantity
+              key={`${item.productId._id}-${item.quantity}`}
               className="flex items-center gap-4 py-4 border-b last:border-0"
             >
               <div className="w-20 h-20 flex-shrink-0">
@@ -202,7 +208,9 @@ export default function CartPage() {
               </div>
 
               <div className="flex-1">
-                <h3 className="font-semibold text-lg">{item.productId.name}</h3>
+                <h3 className="font-semibold text-lg">
+                  {item.productId.name}
+                </h3>
                 <p className="text-green-600 font-bold">
                   {Number(item.productId.price)?.toLocaleString("vi-VN")}₫
                 </p>
@@ -211,7 +219,9 @@ export default function CartPage() {
               <div className="flex items-center gap-2">
                 <button
                   disabled={updating}
-                  onClick={() => handleUpdateQuantity(item.productId._id, item.quantity - 1)}
+                  onClick={() =>
+                    handleUpdateQuantity(item.productId._id, item.quantity - 1)
+                  }
                   className="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center hover:bg-gray-100 disabled:opacity-50"
                 >
                   -
@@ -219,7 +229,9 @@ export default function CartPage() {
                 <span className="w-8 text-center">{item.quantity}</span>
                 <button
                   disabled={updating}
-                  onClick={() => handleUpdateQuantity(item.productId._id, item.quantity + 1)}
+                  onClick={() =>
+                    handleUpdateQuantity(item.productId._id, item.quantity + 1)
+                  }
                   className="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center hover:bg-gray-100 disabled:opacity-50"
                 >
                   +
@@ -228,7 +240,10 @@ export default function CartPage() {
 
               <div className="text-right min-w-[120px]">
                 <div className="font-bold text-green-600">
-                  {(Number(item.productId.price) * item.quantity).toLocaleString("vi-VN")}₫
+                  {(Number(item.productId.price) * item.quantity).toLocaleString(
+                    "vi-VN"
+                  )}
+                  ₫
                 </div>
                 <button
                   disabled={updating}
