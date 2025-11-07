@@ -6,9 +6,31 @@ import DronesPage from "./DronePage.jsx";
 import AnalyticsPage from "./AnalyticsPage.jsx";
 import ProfilePage from "./Profile.jsx";
 
+// ✅ Định nghĩa API_BASE để gọi logout từ backend
+const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:5000";
+
 export default function RestaurantDashboard() {
   const [tab, setTab] = useState("orders");
   const navigate = useNavigate();
+
+  // ✅ Hàm đăng xuất
+  const handleLogout = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      await fetch(`${API_BASE}/api/auth/logout`, {
+        method: "POST",
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        credentials: "include",
+      });
+    } catch (e) {
+      console.error("logout error:", e);
+    } finally {
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+      localStorage.removeItem("myRestaurantId");
+      navigate("/login", { replace: true });
+    }
+  };
 
   const TabButton = ({ value, children }) => (
     <button
@@ -26,15 +48,17 @@ export default function RestaurantDashboard() {
 
   return (
     <div className="space-y-6">
-      {/* ✅ Thanh tiêu đề riêng cho khu nhà hàng */}
+      {/* ✅ Header có nút về trang chủ và đăng xuất */}
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold text-gray-800">Restaurant Dashboard</h1>
-        <button
-          onClick={() => navigate("/")}
-          className="px-4 py-2 rounded bg-gray-800 text-white hover:bg-gray-700 transition"
-        >
-          ← Về trang chủ
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={handleLogout}
+            className="px-4 py-2 rounded bg-red-600 text-white hover:bg-red-700 transition"
+          >
+            Đăng xuất
+          </button>
+        </div>
       </div>
 
       {/* ✅ Nút chọn tab */}
@@ -57,3 +81,4 @@ export default function RestaurantDashboard() {
     </div>
   );
 }
+
