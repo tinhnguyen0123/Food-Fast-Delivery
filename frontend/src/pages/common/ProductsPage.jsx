@@ -1,37 +1,71 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { toast } from "react-toastify";
-import { Search } from "lucide-react";  
+import { Search, UtensilsCrossed } from "lucide-react";
 import ProductCard from "../../components/ProductCard";
+import RestaurantCard from "../../components/RestaurantCard"; // Giả sử bạn có component này
 
 export default function ProductsPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const params = new URLSearchParams(location.search);
-  const category = params.get("category") || "all";
+  const restaurantId = params.get("restaurantId");
 
   const [products, setProducts] = useState([]);
+  const [restaurants, setRestaurants] = useState([]);
+  const [selectedRestaurant, setSelectedRestaurant] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [query, setQuery] = useState(""); 
+  const [query, setQuery] = useState("");
 
   useEffect(() => {
-    fetchProducts();
-  }, [category]);
+    if (restaurantId) {
+      fetchProductsByRestaurant(restaurantId);
+    } else {
+      fetchRestaurants();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [restaurantId]);
 
-  const fetchProducts = async () => {
+  const fetchRestaurants = async () => {
+    setLoading(true);
+    setProducts([]);
+    setSelectedRestaurant(null);
+    try {
+      const res = await fetch(`http://localhost:5000/api/restaurant`);
+      if (!res.ok) {
+        throw new Error("Không thể tải danh sách nhà hàng");
+      }
+      const data = await res.json();
+      setRestaurants(data);
+    } catch (err) {
+      console.error("Fetch restaurants error:", err);
+      toast.error(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchProductsByRestaurant = async (rid) => {
     setLoading(true);
     try {
       const res = await fetch(
-        `http://localhost:5000/api/product/category/${encodeURIComponent(
-          category
-        )}`
+        `http://localhost:5000/api/product/restaurant/${rid}`
       );
+      // Cũng lấy thông tin nhà hàng để hiển thị tên
+      const restaurantRes = await fetch(
+        `http://localhost:5000/api/restaurant/${rid}`
+      );
+
       if (!res.ok) {
         const err = await res.json();
         throw new Error(err.message || "Failed to load products");
       }
       const data = await res.json();
       setProducts(data);
+
+      if (restaurantRes.ok) {
+        setSelectedRestaurant(await restaurantRes.json());
+      }
     } catch (err) {
       console.error("Fetch products error:", err);
       toast.error(err.message || "Không thể tải sản phẩm");
@@ -93,10 +127,20 @@ export default function ProductsPage() {
     }
   };
 
-  // ✅ Lọc client-side theo tên sản phẩm
+  // Lọc sản phẩm hoặc nhà hàng
   const filteredProducts = products.filter((p) =>
     p.name?.toLowerCase().includes(query.trim().toLowerCase())
   );
+  const filteredRestaurants = restaurants.filter((r) =>
+    r.name?.toLowerCase().includes(query.trim().toLowerCase())
+  );
+
+  const handleSelectRestaurant = (id) => {
+    navigate(`/products?restaurantId=${id}`);
+  };
+  const handleBackToRestaurants = () => {
+    navigate("/products");
+  };
 
   if (loading) {
     return (
@@ -111,40 +155,67 @@ export default function ProductsPage() {
 
   return (
     <div>
-      {/* 🔍 Thanh tiêu đề và tìm kiếm */}
+      {/* Thanh tiêu đề và tìm kiếm */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 gap-4">
-        <h2 className="text-2xl font-bold text-gray-800">
-          Danh sách món ({category})
-        </h2>
+        <div className="flex items-center gap-3">
+          {restaurantId && (
+            <button
+              onClick={handleBackToRestaurants}
+              className="text-blue-600 hover:underline"
+            >
+              &larr; Quay lại
+            </button>
+          )}
+          <h2 className="text-2xl font-bold text-gray-800">
+            {restaurantId
+              ? `Thực đơn ${selectedRestaurant?.name || ""}`
+              : "Chọn nhà hàng"}
+          </h2>
+        </div>
 
-        {/* ✅ Ô tìm kiếm có icon và hiệu ứng focus */}
         <div className="relative w-full sm:w-72">
           <Search className="absolute left-3 top-2.5 text-gray-400 w-5 h-5" />
           <input
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Tìm món theo tên..."
+            placeholder={restaurantId ? "Tìm món..." : "Tìm nhà hàng..."}
             className="w-full pl-10 pr-4 py-2 border rounded-xl shadow-sm text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200"
           />
         </div>
 
         <div className="text-sm text-gray-600">
-          Tổng: {filteredProducts.length}
+          Tổng: {restaurantId ? filteredProducts.length : filteredRestaurants.length}
         </div>
       </div>
 
-      {/* 🔽 Hiển thị danh sách sản phẩm */}
-      {filteredProducts.length === 0 ? (
-        <div className="text-center text-gray-500">
-          Không có món nào phù hợp
-        </div>
+      {/* Hiển thị danh sách nhà hàng hoặc sản phẩm */}
+      {restaurantId ? (
+        // Chế độ xem sản phẩm
+        filteredProducts.length === 0 ? (
+          <div className="text-center text-gray-500 py-10">
+            Không có món nào phù hợp
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+            {filteredProducts.map((p) => (
+              <ProductCard key={p._id} product={p} onAdd={handleAddToCart} />
+            ))}
+          </div>
+        )
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-          {filteredProducts.map((p) => (
-            <ProductCard key={p._id} product={p} onAdd={handleAddToCart} />
-          ))}
-        </div>
+        // Chế độ xem nhà hàng
+        filteredRestaurants.length === 0 ? (
+          <div className="text-center text-gray-500 py-10">
+            Không có nhà hàng nào phù hợp
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+            {filteredRestaurants.map((r) => (
+              <RestaurantCard key={r._id} restaurant={r} onClick={() => handleSelectRestaurant(r._id)} />
+            ))}
+          </div>
+        )
       )}
     </div>
   );
