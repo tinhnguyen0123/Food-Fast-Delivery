@@ -11,6 +11,13 @@ export default function Navbar() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
 
+  // ✅ Hàm safeNavigate: đóng dropdown/mobile trước, rồi mới navigate (mượt hơn)
+  const safeNavigate = (path) => {
+    setIsProfileDropdownOpen(false);
+    setIsMobileMenuOpen(false);
+    setTimeout(() => navigate(path), 50);
+  };
+
   useEffect(() => {
     checkLoginStatus();
   }, [location]);
@@ -44,9 +51,7 @@ export default function Navbar() {
     localStorage.removeItem('user');
     setIsLoggedIn(false);
     setUser(null);
-    navigate('/login');
-    setIsProfileDropdownOpen(false);
-    setIsMobileMenuOpen(false);
+    safeNavigate('/login');
   };
 
   const toggleMobileMenu = () => setIsMobileMenuOpen(!isMobileMenuOpen);
@@ -60,7 +65,7 @@ export default function Navbar() {
           
           {/* LOGO */}
           <div
-            onClick={() => navigate('/products')}
+            onClick={() => safeNavigate('/products')}
             className={`text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent cursor-pointer hover:scale-105 transition-transform ${
               isActive('/') ? 'scale-105' : ''
             }`}
@@ -81,7 +86,8 @@ export default function Navbar() {
           {/* DESKTOP MENU */}
           <div className="hidden md:flex items-center gap-6">
             <button
-              onClick={() => navigate('/products')}
+              type="button"
+              onClick={() => safeNavigate('/products')}
               className={`font-medium transition-colors px-3 py-2 rounded-lg hover:bg-blue-50 ${
                 isActive('/products')
                   ? 'bg-blue-50 text-blue-600 border-b-2 border-blue-600'
@@ -91,10 +97,26 @@ export default function Navbar() {
               🍽️ Thực đơn
             </button>
 
+            {/* 🔹 Nút Quản lý nhà hàng */}
+            {isLoggedIn && user?.role === 'restaurant' && (
+              <button
+                type="button"
+                onClick={() => safeNavigate('/restaurant/dashboard')}
+                className={`font-medium transition-colors px-3 py-2 rounded-lg hover:bg-blue-50 ${
+                  isActive('/restaurant/dashboard')
+                    ? 'bg-blue-50 text-blue-600 border-b-2 border-blue-600'
+                    : 'text-gray-700 hover:text-blue-600'
+                }`}
+              >
+                🏪 Quản lý nhà hàng
+              </button>
+            )}
+
             {isLoggedIn ? (
               <>
                 <button
-                  onClick={() => navigate('/cart')}
+                  type="button"
+                  onClick={() => safeNavigate('/cart')}
                   className={`font-medium transition-colors px-3 py-2 rounded-lg hover:bg-blue-50 flex items-center gap-1 ${
                     isActive('/cart')
                       ? 'bg-blue-50 text-blue-600 border-b-2 border-blue-600'
@@ -111,6 +133,7 @@ export default function Navbar() {
                   </span>
 
                   <button
+                    type="button"
                     onClick={toggleProfileDropdown}
                     className={`bg-gray-100 text-gray-700 px-4 py-2 rounded-xl hover:bg-gray-200 transition-shadow shadow-sm flex items-center gap-1 text-sm ${
                       isActive('/profile')
@@ -130,10 +153,8 @@ export default function Navbar() {
                     <div className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-lg border border-gray-200 py-2 z-10 animate-in fade-in slide-in-from-top-2 duration-200">
                       {!isActive('/profile') && (
                         <button
-                          onClick={() => {
-                            navigate('/profile');
-                            setIsProfileDropdownOpen(false);
-                          }}
+                          type="button"
+                          onClick={() => safeNavigate('/profile')}
                           className="w-full text-left px-4 py-2 text-gray-700 hover:bg-blue-50 transition-colors text-sm"
                         >
                           📝 Xem profile
@@ -141,16 +162,25 @@ export default function Navbar() {
                       )}
 
                       <button
-                        onClick={() => {
-                          navigate('/orders');
-                          setIsProfileDropdownOpen(false);
-                        }}
+                        type="button"
+                        onClick={() => safeNavigate('/orders')}
                         className="w-full text-left px-4 py-2 text-gray-700 hover:bg-blue-50 transition-colors text-sm"
                       >
                         📦 Đơn hàng
                       </button>
 
+                      {user?.role === 'restaurant' && (
+                        <button
+                          type="button"
+                          onClick={() => safeNavigate('/restaurant/dashboard')}
+                          className="w-full text-left px-4 py-2 text-gray-700 hover:bg-blue-50 transition-colors text-sm"
+                        >
+                          🏪 Quản lý nhà hàng
+                        </button>
+                      )}
+
                       <button
+                        type="button"
                         onClick={handleLogout}
                         className="w-full text-left px-4 py-2 text-red-600 hover:bg-red-50 transition-colors text-sm"
                       >
@@ -163,13 +193,15 @@ export default function Navbar() {
             ) : (
               <>
                 <button
-                  onClick={() => navigate('/login')}
+                  type="button"
+                  onClick={() => safeNavigate('/login')}
                   className="bg-blue-600 text-white px-4 py-2 rounded-xl hover:bg-blue-700 transition-shadow shadow-sm text-sm"
                 >
                   🔑 Đăng nhập
                 </button>
                 <button
-                  onClick={() => navigate('/register')}
+                  type="button"
+                  onClick={() => safeNavigate('/register')}
                   className="bg-green-600 text-white px-4 py-2 rounded-xl hover:bg-green-700 transition-shadow shadow-sm text-sm ml-2"
                 >
                   📝 Đăng ký
@@ -184,10 +216,8 @@ export default function Navbar() {
           <div className="md:hidden mt-4 pb-4 border-t border-gray-200">
             <div className="flex flex-col gap-3 pt-4">
               <button
-                onClick={() => {
-                  navigate('/products');
-                  setIsMobileMenuOpen(false);
-                }}
+                type="button"
+                onClick={() => safeNavigate('/products')}
                 className={`font-medium w-full text-left py-2 px-4 rounded-lg hover:bg-blue-50 ${
                   isActive('/products')
                     ? 'bg-blue-50 text-blue-600 border-l-4 border-blue-600'
@@ -197,13 +227,25 @@ export default function Navbar() {
                 🍽️ Thực đơn
               </button>
 
+              {isLoggedIn && user?.role === 'restaurant' && (
+                <button
+                  type="button"
+                  onClick={() => safeNavigate('/restaurant/dashboard')}
+                  className={`font-medium w-full text-left py-2 px-4 rounded-lg hover:bg-blue-50 ${
+                    isActive('/restaurant/dashboard')
+                      ? 'bg-blue-50 text-blue-600 border-l-4 border-blue-600'
+                      : 'text-gray-700 hover:text-blue-600'
+                  }`}
+                >
+                  🏪 Quản lý nhà hàng
+                </button>
+              )}
+
               {isLoggedIn ? (
                 <>
                   <button
-                    onClick={() => {
-                      navigate('/cart');
-                      setIsMobileMenuOpen(false);
-                    }}
+                    type="button"
+                    onClick={() => safeNavigate('/cart')}
                     className={`font-medium w-full text-left py-2 px-4 rounded-lg hover:bg-blue-50 ${
                       isActive('/cart')
                         ? 'bg-blue-50 text-blue-600 border-l-4 border-blue-600'
@@ -214,10 +256,8 @@ export default function Navbar() {
                   </button>
 
                   <button
-                    onClick={() => {
-                      navigate('/orders');
-                      setIsMobileMenuOpen(false);
-                    }}
+                    type="button"
+                    onClick={() => safeNavigate('/orders')}
                     className={`font-medium w-full text-left py-2 px-4 rounded-lg hover:bg-blue-50 ${
                       isActive('/orders')
                         ? 'bg-blue-50 text-blue-600 border-l-4 border-blue-600'
@@ -233,16 +273,15 @@ export default function Navbar() {
                     </span>
 
                     <button
-                      onClick={() => {
-                        navigate('/profile');
-                        setIsMobileMenuOpen(false);
-                      }}
+                      type="button"
+                      onClick={() => safeNavigate('/profile')}
                       className="bg-gray-100 text-gray-700 px-4 py-2 rounded-xl hover:bg-gray-200 transition-shadow shadow-sm text-sm w-full text-left"
                     >
                       👤 Xem profile
                     </button>
 
                     <button
+                      type="button"
                       onClick={handleLogout}
                       className="bg-red-500 text-white px-4 py-2 rounded-xl hover:bg-red-600 transition-shadow shadow-sm text-sm w-full"
                     >
@@ -253,19 +292,15 @@ export default function Navbar() {
               ) : (
                 <>
                   <button
-                    onClick={() => {
-                      navigate('/login');
-                      setIsMobileMenuOpen(false);
-                    }}
+                    type="button"
+                    onClick={() => safeNavigate('/login')}
                     className="bg-blue-600 text-white px-4 py-2 rounded-xl hover:bg-blue-700 shadow-sm text-sm w-full"
                   >
                     🔑 Đăng nhập
                   </button>
                   <button
-                    onClick={() => {
-                      navigate('/register');
-                      setIsMobileMenuOpen(false);
-                    }}
+                    type="button"
+                    onClick={() => safeNavigate('/register')}
                     className="bg-green-600 text-white px-4 py-2 rounded-xl hover:bg-green-700 shadow-sm text-sm w-full"
                   >
                     📝 Đăng ký

@@ -5,8 +5,8 @@ class ProductController {
     try {
       const product = await ProductService.createProduct(req.body, req.file);
       res.status(201).json(product);
-    } catch (error) {
-      res.status(400).json({ message: error.message });
+    } catch (e) {
+      res.status(400).json({ message: e.message });
     }
   }
 

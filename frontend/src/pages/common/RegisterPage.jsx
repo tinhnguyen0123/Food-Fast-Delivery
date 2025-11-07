@@ -9,7 +9,7 @@ export default function RegisterPage() {
     email: '',
     password: '',
     phone: '',
-    role: 'customer'
+    role: 'customer' // ✅ luôn là customer ở trang này
   });
   const [loading, setLoading] = useState(false);
 
@@ -40,10 +40,9 @@ export default function RegisterPage() {
           position: "top-right",
           autoClose: 2000,
         });
-        
-        // ✅ ĐÃ SỬA: Thêm phone: '' vào đây
+
         setFormData({ name: '', email: '', password: '', phone: '', role: 'customer' });
-        
+
         setTimeout(() => {
           navigate('/login');
         }, 2000);
@@ -67,6 +66,24 @@ export default function RegisterPage() {
   return (
     <div className="flex flex-col items-center">
       <h2 className="text-2xl font-semibold mb-4 text-blue-600">Đăng ký</h2>
+
+      {/* ✅ Chọn loại tài khoản */}
+      <div className="flex gap-3 mb-4">
+        <button
+          type="button"
+          onClick={() => setFormData((p) => ({ ...p, role: 'customer' }))}
+          className={`px-4 py-2 rounded ${formData.role === 'customer' ? 'bg-blue-600 text-white' : 'bg-gray-200'}`}
+        >
+          Khách hàng
+        </button>
+        <button
+          type="button"
+          onClick={() => navigate('/register-restaurant')}
+          className="px-4 py-2 rounded bg-gray-200"
+        >
+          Nhà hàng
+        </button>
+      </div>
 
       <form onSubmit={handleSubmit} className="bg-white p-6 rounded-lg shadow-md w-80">
         <input 
@@ -104,15 +121,8 @@ export default function RegisterPage() {
           value={formData.phone}
           onChange={handleChange}
         />
-        <select
-          className="border p-2 w-full mb-3 rounded focus:outline-none focus:ring-2 focus:ring-green-500"
-          name="role"
-          value={formData.role}
-          onChange={handleChange}
-        >
-          <option value="customer">Khách hàng</option>
-          <option value="restaurant">Nhà hàng</option>
-        </select>
+
+        {/* ✅ Đã bỏ dropdown chọn role */}
 
         <button 
           type="submit"
