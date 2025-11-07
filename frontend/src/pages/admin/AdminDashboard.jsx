@@ -63,12 +63,6 @@ export default function AdminDashboard() {
           {/* ✅ Nút về trang chủ + đăng xuất */}
           <div className="flex items-center gap-3">
             <button
-              onClick={() => navigate("/")}
-              className="px-4 py-2 rounded bg-gray-100 hover:bg-gray-200 text-sm"
-            >
-              ← Về trang chủ
-            </button>
-            <button
               onClick={handleLogout}
               className="px-4 py-2 rounded bg-red-600 text-white hover:bg-red-700 text-sm"
             >

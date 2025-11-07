@@ -53,12 +53,6 @@ export default function RestaurantDashboard() {
         <h1 className="text-3xl font-bold text-gray-800">Restaurant Dashboard</h1>
         <div className="flex items-center gap-3">
           <button
-            onClick={() => navigate("/")}
-            className="px-4 py-2 rounded bg-gray-800 text-white hover:bg-gray-700 transition"
-          >
-            ← Về trang chủ
-          </button>
-          <button
             onClick={handleLogout}
             className="px-4 py-2 rounded bg-red-600 text-white hover:bg-red-700 transition"
           >
