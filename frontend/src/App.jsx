@@ -20,6 +20,9 @@ import OrdersPage from "./pages/common/OrdersPage"
 import OrderDetailPage from "./pages/common/OrderDetailPage"
 import PaymentPage from "./pages/common/PaymentPage"
 
+// 🔹 changed code: import RestaurantsPage
+import RestaurantsPage from "./pages/common/RestaurantsPage"
+
 // Restaurant pages
 import RestaurantDashboard from "./pages/restaurant/RestaurantDashboard.jsx"
 import RestaurantRegisterPage from "./pages/restaurant/RestaurantRegisterPage.jsx"
@@ -41,15 +44,14 @@ function App() {
     const target = (import.meta.env.VITE_TARGET || "customer").toUpperCase()
     const defaultRoute = import.meta.env[`VITE_DEFAULT_ROUTE_${target}`]
 
-    // Nếu người dùng vào "/" và có default route được cấu hình -> điều hướng
     if (location.pathname === "/" && defaultRoute) {
       navigate(defaultRoute, { replace: true })
     }
   }, [location.pathname, navigate])
 
-  // ✅ Ẩn Navbar trong khu vực /restaurant hoặc /admin
+  // ✅ Chỉ ẩn Navbar cho các route bắt đầu chính xác bằng "/restaurant" (không ẩn "/restaurants")
   const hideNavbar =
-    location.pathname.startsWith("/restaurant") ||
+    /^\/restaurant(\/|$)/.test(location.pathname) ||
     location.pathname.startsWith("/admin")
 
   return (
@@ -64,7 +66,7 @@ function App() {
         theme="light"
       />
 
-      {/* ✅ Chỉ hiển thị Navbar nếu KHÔNG thuộc khu vực quản trị */}
+      {/* ✅ Chỉ hiển thị Navbar nếu không thuộc khu vực quản trị hoặc route restaurant dashboard */}
       {!hideNavbar && <Navbar />}
 
       <main className="p-6">
@@ -72,6 +74,8 @@ function App() {
           {/* 🌐 Public routes */}
           <Route path="/" element={<HomePage />} />
           <Route path="/products" element={<ProductsPage />} />
+          {/* 🔹 changed code: thêm route /restaurants */}
+          <Route path="/restaurants" element={<RestaurantsPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/register-restaurant" element={<RestaurantRegisterPage />} />
@@ -159,4 +163,3 @@ function App() {
 }
 
 export default App
-

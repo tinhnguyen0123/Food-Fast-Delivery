@@ -86,16 +86,16 @@ export default function Navbar() {
           {/* DESKTOP MENU */}
           <div className="hidden md:flex items-center gap-6">
             <button
-              type="button"
-              onClick={() => safeNavigate('/products')}
-              className={`font-medium transition-colors px-3 py-2 rounded-lg hover:bg-blue-50 ${
-                isActive('/products')
-                  ? 'bg-blue-50 text-blue-600 border-b-2 border-blue-600'
-                  : 'text-gray-700 hover:text-blue-600'
-              }`}
-            >
-              🍽️ Thực đơn
-            </button>
+                type="button"
+                onClick={() => safeNavigate('/restaurants')}
+                className={`font-medium transition-colors px-3 py-2 rounded-lg hover:bg-blue-50 ${
+                  isActive('/restaurants')
+                    ? 'bg-blue-50 text-blue-600 border-b-2 border-blue-600'
+                    : 'text-gray-700 hover:text-blue-600'
+                }`}
+              >
+                🏬 Danh sách nhà hàng
+              </button>
 
             {/* 🔹 Nút Quản lý nhà hàng */}
             {isLoggedIn && user?.role === 'restaurant' && (

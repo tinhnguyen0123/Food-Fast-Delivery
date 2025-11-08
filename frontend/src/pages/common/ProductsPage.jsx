@@ -4,34 +4,47 @@ import { toast } from "react-toastify";
 import { Search } from "lucide-react";  
 import ProductCard from "../../components/ProductCard";
 
+const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:5000";
+
 export default function ProductsPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const params = new URLSearchParams(location.search);
   const category = params.get("category") || "all";
 
+  // 🔹 changed code: lấy restaurantId từ query param
+  const restaurantId = params.get("restaurantId") || null;
+
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState(""); 
 
+  // 🔹 changed code: thêm restaurantId vào dependency
   useEffect(() => {
     fetchProducts();
-  }, [category]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [category, restaurantId]);
 
   const fetchProducts = async () => {
     setLoading(true);
     try {
-      const res = await fetch(
-        `http://localhost:5000/api/product/category/${encodeURIComponent(
-          category
-        )}`
-      );
+      let url;
+      // 🔹 changed code: nếu có restaurantId thì fetch theo nhà hàng
+      if (restaurantId) {
+        url = `${API_BASE}/api/product/restaurant/${encodeURIComponent(restaurantId)}`;
+      } else {
+        url = `${API_BASE}/api/product/category/${encodeURIComponent(category)}`;
+      }
+
+      const res = await fetch(url);
       if (!res.ok) {
-        const err = await res.json();
+        const err = await res.json().catch(() => ({ message: "Failed to load products" }));
         throw new Error(err.message || "Failed to load products");
       }
+
       const data = await res.json();
-      setProducts(data);
+      // 🔹 changed code: đảm bảo data là array
+      setProducts(Array.isArray(data) ? data : data.items || data);
     } catch (err) {
       console.error("Fetch products error:", err);
       toast.error(err.message || "Không thể tải sản phẩm");
@@ -50,7 +63,7 @@ export default function ProductsPage() {
 
     try {
       // 1️⃣ Lấy giỏ gần nhất
-      let res = await fetch("http://localhost:5000/api/cart/latest", {
+      let res = await fetch(`${API_BASE}/api/cart/latest`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -59,7 +72,7 @@ export default function ProductsPage() {
         cart = await res.json();
       } else {
         // nếu không có, tạo mới
-        res = await fetch("http://localhost:5000/api/cart", {
+        res = await fetch(`${API_BASE}/api/cart`, {
           method: "POST",
           headers: { Authorization: `Bearer ${token}` },
         });
@@ -68,7 +81,7 @@ export default function ProductsPage() {
       }
 
       // 2️⃣ Thêm item
-      const addRes = await fetch("http://localhost:5000/api/cart/add", {
+      const addRes = await fetch(`${API_BASE}/api/cart/add`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

@@ -235,7 +235,6 @@ export default function RestaurantRegisterPage() {
 
   return (
     <div className="max-w-3xl mx-auto">
-      {/* ✅ Tiêu đề canh giữa */}
       <h2 className="text-2xl font-semibold mb-4 text-blue-600 text-center">
         Đăng ký Nhà hàng
       </h2>

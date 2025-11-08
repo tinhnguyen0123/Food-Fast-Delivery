@@ -104,35 +104,36 @@ export default function OrderDetailPage() {
 
           <div className="border-t pt-6">
             <h3 className="font-semibold mb-4">Chi tiết món</h3>
-            <div className="space-y-4">
-              {order.items.map((item) => (
-                <div
-                  key={item.productId._id}
-                  className="flex justify-between items-center"
-                >
-                  <div>
-                    <p className="font-medium">{item.productId.name}</p>
-                    <p className="text-sm text-gray-600">
-                      Số lượng: {item.quantity}
-                    </p>
+            <div className="space-y-2">
+              {order.items.map((item) => {
+                const unitPrice = Number(
+                  item.priceAtOrderTime ?? item.productId?.price ?? 0
+                );
+                const lineTotal = unitPrice * Number(item.quantity || 0);
+
+                return (
+                  <div
+                    key={item.productId._id || item.productId}
+                    className="flex justify-between items-center py-2"
+                  >
+                    <div>
+                      <p className="font-medium">{item.productId.name}</p>
+                      <p className="text-sm text-gray-600">
+                        Số lượng: {item.quantity}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-medium">{lineTotal.toLocaleString("vi-VN")}₫</p>
+                      <p className="text-sm text-gray-600">
+                        ({unitPrice.toLocaleString("vi-VN")}₫/món)
+                      </p>
+                    </div>
                   </div>
-                  <div className="text-right">
-                    <p className="font-medium">
-                      {(item.priceAtOrderTime * item.quantity).toLocaleString(
-                        "vi-VN"
-                      )}
-                      ₫
-                    </p>
-                    <p className="text-sm text-gray-600">
-                      ({item.priceAtOrderTime?.toLocaleString("vi-VN")}₫/món)
-                    </p>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
 
-          {/* ✅ Thêm phần hiển thị địa chỉ giao hàng */}
           {order.shippingAddress && (
             <div className="border-t mt-6 pt-6">
               <h3 className="font-semibold mb-4">Địa chỉ giao hàng</h3>
@@ -160,9 +161,11 @@ export default function OrderDetailPage() {
               <div>
                 <p className="text-gray-600">Phương thức thanh toán</p>
                 <p className="font-medium">
-                  {order.paymentMethod === "COD"
-                    ? "Thanh toán khi nhận hàng"
-                    : "Đã thanh toán"}
+                 {order.paymentMethod === "VNPAY"
+                  ? (order.paymentId?.status === "paid"
+                      ? "Đã thanh toán"
+                      : "Chờ thanh toán")
+                  : "Thanh toán khi nhận hàng"}
                 </p>
               </div>
               <div className="text-right">
