@@ -17,7 +17,7 @@ export default function OrdersPage() {
   const [restaurantId, setRestaurantId] = useState(localStorage.getItem("myRestaurantId") || "");
   const token = localStorage.getItem("token");
 
-  // ✅ Lấy ID nhà hàng mà tài khoản sở hữu (và cache lại)
+  
   const ensureRestaurantId = async () => {
     if (restaurantId) return restaurantId;
     const cached = localStorage.getItem("myRestaurantId");
