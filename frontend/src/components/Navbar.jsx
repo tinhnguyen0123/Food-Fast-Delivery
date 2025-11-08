@@ -58,6 +58,12 @@ export default function Navbar() {
   const toggleProfileDropdown = () => setIsProfileDropdownOpen(!isProfileDropdownOpen);
   const isActive = (path) => location.pathname === path;
 
+  // ✅ THÊM BIẾN LOGIC
+  // Biến này = true nếu:
+  // 1. User chưa đăng nhập (user là null)
+  // 2. HOẶC user đã đăng nhập nhưng KHÔNG PHẢI 'admin' VÀ KHÔNG PHẢI 'restaurant'
+  const isCustomerView = !user || (user.role !== 'admin' && user.role !== 'restaurant');
+
   return (
     <nav className="bg-white/95 backdrop-blur-sm shadow-lg border-b border-gray-100 sticky top-0 z-50">
       <div className="container mx-auto px-4 py-3">
@@ -85,17 +91,21 @@ export default function Navbar() {
 
           {/* DESKTOP MENU */}
           <div className="hidden md:flex items-center gap-6">
-            <button
-              type="button"
-              onClick={() => safeNavigate('/products')}
-              className={`font-medium transition-colors px-3 py-2 rounded-lg hover:bg-blue-50 ${
-                isActive('/products')
-                  ? 'bg-blue-50 text-blue-600 border-b-2 border-blue-600'
-                  : 'text-gray-700 hover:text-blue-600'
-              }`}
-            >
-              🍽️ Thực đơn
-            </button>
+            
+            {/* ✅ ĐÃ SỬA: Chỉ hiện khi là Customer View */}
+            {isCustomerView && (
+              <button
+                type="button"
+                onClick={() => safeNavigate('/products')}
+                className={`font-medium transition-colors px-3 py-2 rounded-lg hover:bg-blue-50 ${
+                  isActive('/products')
+                    ? 'bg-blue-50 text-blue-600 border-b-2 border-blue-600'
+                    : 'text-gray-700 hover:text-blue-600'
+                }`}
+              >
+                🍽️ Thực đơn
+              </button>
+            )}
 
             {/* 🔹 Nút Quản lý nhà hàng */}
             {isLoggedIn && user?.role === 'restaurant' && (
@@ -114,17 +124,20 @@ export default function Navbar() {
 
             {isLoggedIn ? (
               <>
-                <button
-                  type="button"
-                  onClick={() => safeNavigate('/cart')}
-                  className={`font-medium transition-colors px-3 py-2 rounded-lg hover:bg-blue-50 flex items-center gap-1 ${
-                    isActive('/cart')
-                      ? 'bg-blue-50 text-blue-600 border-b-2 border-blue-600'
-                      : 'text-gray-700 hover:text-blue-600'
-                  }`}
-                >
-                  🛒 Giỏ hàng
-                </button>
+                {/* ✅ ĐÃ SỬA: Chỉ hiện khi là Customer View */}
+                {isCustomerView && (
+                  <button
+                    type="button"
+                    onClick={() => safeNavigate('/cart')}
+                    className={`font-medium transition-colors px-3 py-2 rounded-lg hover:bg-blue-50 flex items-center gap-1 ${
+                      isActive('/cart')
+                        ? 'bg-blue-50 text-blue-600 border-b-2 border-blue-600'
+                        : 'text-gray-700 hover:text-blue-600'
+                    }`}
+                  >
+                    🛒 Giỏ hàng
+                  </button>
+                )}
 
                 {/* Dropdown tài khoản */}
                 <div className="relative ml-4" ref={dropdownRef}>
@@ -161,13 +174,16 @@ export default function Navbar() {
                         </button>
                       )}
 
-                      <button
-                        type="button"
-                        onClick={() => safeNavigate('/orders')}
-                        className="w-full text-left px-4 py-2 text-gray-700 hover:bg-blue-50 transition-colors text-sm"
-                      >
-                        📦 Đơn hàng
-                      </button>
+                      {/* ✅ ĐÃ SỬA: Chỉ hiện khi là Customer View */}
+                      {isCustomerView && (
+                        <button
+                          type="button"
+                          onClick={() => safeNavigate('/orders')}
+                          className="w-full text-left px-4 py-2 text-gray-700 hover:bg-blue-50 transition-colors text-sm"
+                        >
+                          📦 Đơn hàng
+                        </button>
+                      )}
 
                       {user?.role === 'restaurant' && (
                         <button
@@ -215,17 +231,21 @@ export default function Navbar() {
         {isMobileMenuOpen && (
           <div className="md:hidden mt-4 pb-4 border-t border-gray-200">
             <div className="flex flex-col gap-3 pt-4">
-              <button
-                type="button"
-                onClick={() => safeNavigate('/products')}
-                className={`font-medium w-full text-left py-2 px-4 rounded-lg hover:bg-blue-50 ${
-                  isActive('/products')
-                    ? 'bg-blue-50 text-blue-600 border-l-4 border-blue-600'
-                    : 'text-gray-700 hover:text-blue-600'
-                }`}
-              >
-                🍽️ Thực đơn
-              </button>
+              
+              {/* ✅ ĐÃ SỬA: Chỉ hiện khi là Customer View */}
+              {isCustomerView && (
+                <button
+                  type="button"
+                  onClick={() => safeNavigate('/products')}
+                  className={`font-medium w-full text-left py-2 px-4 rounded-lg hover:bg-blue-50 ${
+                    isActive('/products')
+                      ? 'bg-blue-50 text-blue-600 border-l-4 border-blue-600'
+                      : 'text-gray-700 hover:text-blue-600'
+                  }`}
+                >
+                  🍽️ Thực đơn
+                </button>
+              )}
 
               {isLoggedIn && user?.role === 'restaurant' && (
                 <button
@@ -243,29 +263,35 @@ export default function Navbar() {
 
               {isLoggedIn ? (
                 <>
-                  <button
-                    type="button"
-                    onClick={() => safeNavigate('/cart')}
-                    className={`font-medium w-full text-left py-2 px-4 rounded-lg hover:bg-blue-50 ${
-                      isActive('/cart')
-                        ? 'bg-blue-50 text-blue-600 border-l-4 border-blue-600'
-                        : 'text-gray-700 hover:text-blue-600'
-                    }`}
-                  >
-                    🛒 Giỏ hàng
-                  </button>
+                  {/* ✅ ĐÃ SỬA: Chỉ hiện khi là Customer View */}
+                  {isCustomerView && (
+                    <button
+                      type="button"
+                      onClick={() => safeNavigate('/cart')}
+                      className={`font-medium w-full text-left py-2 px-4 rounded-lg hover:bg-blue-50 ${
+                        isActive('/cart')
+                          ? 'bg-blue-50 text-blue-600 border-l-4 border-blue-600'
+                          : 'text-gray-700 hover:text-blue-600'
+                      }`}
+                    >
+                      🛒 Giỏ hàng
+                    </button>
+                  )}
 
-                  <button
-                    type="button"
-                    onClick={() => safeNavigate('/orders')}
-                    className={`font-medium w-full text-left py-2 px-4 rounded-lg hover:bg-blue-50 ${
-                      isActive('/orders')
-                        ? 'bg-blue-50 text-blue-600 border-l-4 border-blue-600'
-                        : 'text-gray-700 hover:text-blue-600'
-                    }`}
-                  >
-                    📦 Đơn hàng
-                  </button>
+                  {/* ✅ ĐÃ SỬA: Chỉ hiện khi là Customer View */}
+                  {isCustomerView && (
+                    <button
+                      type="button"
+                      onClick={() => safeNavigate('/orders')}
+                      className={`font-medium w-full text-left py-2 px-4 rounded-lg hover:bg-blue-50 ${
+                        isActive('/orders')
+                          ? 'bg-blue-50 text-blue-600 border-l-4 border-blue-600'
+                          : 'text-gray-700 hover:text-blue-600'
+                      }`}
+                    >
+                      📦 Đơn hàng
+                    </button>
+                  )}
 
                   <div className="flex flex-col gap-2 pt-2 border-t border-gray-200">
                     <span className="text-gray-600 text-sm px-4 pt-2">
