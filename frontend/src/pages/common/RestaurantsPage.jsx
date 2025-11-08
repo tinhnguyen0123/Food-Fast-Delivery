@@ -38,7 +38,7 @@ export default function RestaurantsPage() {
           <button
             type="button"
             onClick={() =>
-              window.history.length > 1 ? navigate(-1) : navigate("/products")
+              navigate("/")
             }
             className="px-3 py-2 rounded border hover:bg-gray-50"
           >

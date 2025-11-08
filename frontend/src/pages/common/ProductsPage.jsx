@@ -120,7 +120,7 @@ export default function ProductsPage() {
     navigate(`/products?restaurantId=${id}`);
   };
   const handleBackToRestaurants = () => {
-    navigate("/products");
+    navigate("/restaurants");
   };
 
   if (loading) {
