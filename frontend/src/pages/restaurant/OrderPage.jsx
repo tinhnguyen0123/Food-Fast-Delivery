@@ -127,7 +127,7 @@ export default function OrdersPage() {
     try {
       // Giữ nguyên status "preparing" nhưng có thể thêm field isReady = true nếu cần
       // Hiện tại chỉ cần đảm bảo status = "preparing" để drone có thể nhận
-      toast.success("✅ Đơn hàng đã sẵn sàng cho drone nhận");
+      toast.success(" Đơn hàng đã sẵn sàng cho drone nhận");
       // Không cần gọi API nếu chỉ là thông báo
     } catch (e) {
       console.error(e);
@@ -172,7 +172,7 @@ export default function OrdersPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Cập nhật trạng thái thất bại");
       setOrders((prev) => prev.map((o) => (o._id === orderId ? { ...o, status } : o)));
-      toast.success("✅ Đã cập nhật trạng thái");
+      toast.success(" Đã cập nhật trạng thái");
     } catch (e) {
       console.error(e);
       toast.error(e.message || "Lỗi cập nhật trạng thái");

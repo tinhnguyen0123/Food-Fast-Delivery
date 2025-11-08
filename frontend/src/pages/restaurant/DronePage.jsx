@@ -109,7 +109,7 @@ export default function DronesPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Gán drone thất bại");
 
-      toast.success("✅ Đã gán drone cho đơn hàng!");
+      toast.success(" Đã gán drone cho đơn hàng!");
       setPendingOrders((prev) => prev.filter((o) => o._id !== orderId));
       setDrones((prev) => prev.map((d) => (d._id === droneId ? { ...d, status: "delivering" } : d)));
     } catch (e) {
@@ -133,7 +133,7 @@ export default function DronesPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Phân bổ tự động thất bại");
-      toast.success(`✅ Đã gán ${data.assigned} đơn cho drone`);
+      toast.success(` Đã gán ${data.assigned} đơn cho drone`);
       await loadData();
     } catch (e) {
       console.error(e);
@@ -164,7 +164,7 @@ export default function DronesPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Tạo drone thất bại");
 
-      toast.success("✅ Đã tạo drone");
+      toast.success(" Đã tạo drone");
       setShowAdd(false);
       setNewDrone({ code: "", name: "", batteryLevel: 100, capacity: 5 });
       await loadData();
