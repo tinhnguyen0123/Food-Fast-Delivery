@@ -1,5 +1,18 @@
 import { useEffect, useState } from "react";
 import { toast } from "react-toastify";
+import { 
+  Search, 
+  Plus, 
+  Edit2, 
+  Trash2, 
+  Eye, 
+  EyeOff, 
+  X,
+  Image as ImageIcon,
+  DollarSign,
+  Package,
+  Tag
+} from "lucide-react";
 
 export default function MenuPage() {
   const [items, setItems] = useState([]);
@@ -16,6 +29,7 @@ export default function MenuPage() {
     available: true,
     image: null,
   });
+  const [imagePreview, setImagePreview] = useState(null);
 
   const token = localStorage.getItem("token");
 
@@ -88,6 +102,7 @@ export default function MenuPage() {
       available: true,
       image: null,
     });
+    setImagePreview(null);
   };
 
   const openCreate = () => {
@@ -105,12 +120,16 @@ export default function MenuPage() {
       available: p.available !== false,
       image: null,
     });
+    setImagePreview(p.image || null);
     setShowForm(true);
   };
 
   const onChooseImage = (e) => {
     const f = e.target.files?.[0];
-    if (f) setForm((prev) => ({ ...prev, image: f }));
+    if (f) {
+      setForm((prev) => ({ ...prev, image: f }));
+      setImagePreview(URL.createObjectURL(f));
+    }
   };
 
   // ✅ Lưu hoặc cập nhật sản phẩm
@@ -132,7 +151,7 @@ export default function MenuPage() {
       fd.append("price", form.price);
       fd.append("category", form.category);
       fd.append("available", String(form.available));
-      fd.append("restaurantId", rid); // ✅ Bắt buộc phải có
+      fd.append("restaurantId", rid);
       if (form.image) {
         fd.append("image", form.image);
         fd.append("file", form.image);
@@ -152,7 +171,7 @@ export default function MenuPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Lưu sản phẩm thất bại");
 
-      toast.success(editing ? "Đã cập nhật món" : "Đã thêm món");
+      toast.success(editing ? " Đã cập nhật món" : " Đã thêm món");
       setShowForm(false);
       resetForm();
       loadProducts();
@@ -163,7 +182,7 @@ export default function MenuPage() {
   };
 
   const deleteProduct = async (id) => {
-    if (!window.confirm("Xóa món này?")) return;
+    if (!window.confirm("Bạn có chắc muốn xóa món này?")) return;
     try {
       const res = await fetch(`http://localhost:5000/api/product/${id}`, {
         method: "DELETE",
@@ -171,7 +190,7 @@ export default function MenuPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Xóa thất bại");
-      toast.success("Đã xóa");
+      toast.success(" Đã xóa món");
       loadProducts();
     } catch (e) {
       console.error(e);
@@ -196,6 +215,7 @@ export default function MenuPage() {
           x._id === p._id ? { ...x, available: !x.available } : x
         )
       );
+      toast.success(p.available ? "👁️ Đã ẩn món" : "✅ Đã hiện món");
     } catch (e) {
       console.error(e);
       toast.error(e.message || "Lỗi cập nhật trạng thái");
@@ -212,169 +232,395 @@ export default function MenuPage() {
     );
   });
 
-  return (
-    <div>
-      <div className="flex flex-wrap justify-between items-center gap-3 mb-4">
-        <div>
-          <h1 className="text-2xl font-semibold">Quản lý Menu</h1>
-          <p className="text-gray-500 text-sm">Thêm, sửa, ẩn/hiện món</p>
+  // Stats
+  const stats = {
+    total: items.length,
+    available: items.filter(i => i.available !== false).length,
+    hidden: items.filter(i => i.available === false).length,
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <div className="text-center">
+          <div className="animate-spin h-12 w-12 border-4 border-orange-600 border-t-transparent rounded-full mx-auto mb-4" />
+          <p className="text-gray-600">Đang tải thực đơn...</p>
         </div>
-        <div className="flex gap-2">
-          <input
-            className="border rounded px-3 py-2"
-            placeholder="Tìm theo tên, danh mục..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-          <button
-            onClick={openCreate}
-            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-          >
-            Thêm món
-          </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-800">Quản lý Thực đơn</h1>
+          <p className="text-gray-600 mt-1">Thêm, chỉnh sửa và quản lý món ăn</p>
+        </div>
+        <button
+          onClick={openCreate}
+          className="bg-gradient-to-r from-orange-600 to-red-600 text-white px-6 py-3 rounded-xl font-semibold hover:shadow-lg transition-all duration-200 flex items-center gap-2"
+        >
+          <Plus className="w-5 h-5" />
+          Thêm món mới
+        </button>
+      </div>
+
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl p-6 text-white shadow-lg">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-blue-100 text-sm mb-1">Tổng số món</p>
+              <p className="text-3xl font-bold">{stats.total}</p>
+            </div>
+            <Package className="w-12 h-12 text-white/30" />
+          </div>
+        </div>
+        
+        <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-xl p-6 text-white shadow-lg">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-green-100 text-sm mb-1">Đang bán</p>
+              <p className="text-3xl font-bold">{stats.available}</p>
+            </div>
+            <Eye className="w-12 h-12 text-white/30" />
+          </div>
+        </div>
+        
+        <div className="bg-gradient-to-br from-gray-500 to-gray-600 rounded-xl p-6 text-white shadow-lg">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-gray-100 text-sm mb-1">Đã ẩn</p>
+              <p className="text-3xl font-bold">{stats.hidden}</p>
+            </div>
+            <EyeOff className="w-12 h-12 text-white/30" />
+          </div>
         </div>
       </div>
 
-      {loading ? (
-        <div className="text-center py-10 text-gray-500">Đang tải...</div>
-      ) : filtered.length === 0 ? (
-        <div className="text-center py-10 text-gray-500">Chưa có món nào</div>
+      {/* Search Bar */}
+      <div className="bg-white rounded-xl shadow-md p-4">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+          <input
+            type="text"
+            className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+            placeholder="Tìm kiếm theo tên, danh mục hoặc mô tả..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
+      </div>
+
+      {/* Menu Grid */}
+      {filtered.length === 0 ? (
+        <div className="bg-white rounded-xl shadow-md p-12 text-center">
+          <Package className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+          <h3 className="text-xl font-semibold text-gray-800 mb-2">
+            {search ? "Không tìm thấy món ăn" : "Chưa có món nào"}
+          </h3>
+          <p className="text-gray-600 mb-6">
+            {search
+              ? "Thử tìm kiếm với từ khóa khác"
+              : "Bắt đầu thêm món ăn vào thực đơn của bạn"}
+          </p>
+          {!search && (
+            <button
+              onClick={openCreate}
+              className="bg-gradient-to-r from-orange-600 to-red-600 text-white px-6 py-3 rounded-xl font-semibold hover:shadow-lg transition-all inline-flex items-center gap-2"
+            >
+              <Plus className="w-5 h-5" />
+              Thêm món đầu tiên
+            </button>
+          )}
+        </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
           {filtered.map((p) => (
             <div
               key={p._id}
-              className={`border rounded p-4 ${
+              className={`bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-all duration-200 ${
                 p.available === false ? "opacity-60" : ""
               }`}
             >
-              <div className="flex justify-between items-start gap-3">
-                <div>
-                  <h3 className="font-semibold">{p.name}</h3>
-                  <p className="text-xs text-gray-500">{p.category}</p>
+              {/* Image */}
+              <div className="relative h-48 bg-gradient-to-br from-orange-100 to-red-100">
+                {p.image ? (
+                  <img
+                    src={p.image}
+                    alt={p.name}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center">
+                    <ImageIcon className="w-16 h-16 text-gray-300" />
+                  </div>
+                )}
+                
+                {/* Status Badge */}
+                <div className="absolute top-3 right-3">
+                  <span
+                    className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold shadow-lg ${
+                      p.available === false
+                        ? "bg-red-500 text-white"
+                        : "bg-green-500 text-white"
+                    }`}
+                  >
+                    {p.available === false ? (
+                      <>
+                        <EyeOff className="w-3 h-3" />
+                        Đã ẩn
+                      </>
+                    ) : (
+                      <>
+                        <Eye className="w-3 h-3" />
+                        Đang bán
+                      </>
+                    )}
+                  </span>
                 </div>
-                <span
-                  className={`text-xs px-2 py-1 rounded ${
-                    p.available === false
-                      ? "bg-red-100 text-red-700"
-                      : "bg-green-100 text-green-700"
-                  }`}
-                >
-                  {p.available === false ? "Ẩn" : "Đang bán"}
-                </span>
+
+                {/* Category Badge */}
+                {p.category && (
+                  <div className="absolute top-3 left-3">
+                    <span className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold bg-white/90 text-gray-700 shadow-lg">
+                      <Tag className="w-3 h-3" />
+                      {p.category}
+                    </span>
+                  </div>
+                )}
               </div>
-              {p.image && (
-                <img
-                  src={p.image}
-                  alt={p.name}
-                  className="mt-2 w-full h-40 object-cover rounded border"
-                />
-              )}
-              <p className="text-sm text-gray-600 mt-2 line-clamp-3">
-                {p.description}
-              </p>
-              <div className="flex justify-between items-center mt-3">
-                <span className="text-lg font-bold text-blue-700">
-                  {Intl.NumberFormat("vi-VN").format(p.price)} đ
-                </span>
-                <div className="flex gap-2">
+
+              {/* Content */}
+              <div className="p-5">
+                <h3 className="text-xl font-bold text-gray-800 mb-2 line-clamp-1">
+                  {p.name}
+                </h3>
+                
+                <p className="text-gray-600 text-sm mb-4 line-clamp-2 min-h-[40px]">
+                  {p.description || "Chưa có mô tả"}
+                </p>
+
+                {/* Price */}
+                <div className="flex items-center gap-2 mb-4">
+                  <DollarSign className="w-5 h-5 text-green-600" />
+                  <span className="text-2xl font-bold text-green-600">
+                    {Intl.NumberFormat("vi-VN").format(p.price)}đ
+                  </span>
+                </div>
+
+                {/* Actions */}
+                <div className="grid grid-cols-3 gap-2">
                   <button
                     onClick={() => openEdit(p)}
-                    className="px-3 py-1 border rounded hover:bg-gray-50"
+                    className="flex items-center justify-center gap-1 px-3 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors text-sm font-medium"
                   >
+                    <Edit2 className="w-4 h-4" />
                     Sửa
                   </button>
+                  
+                  <button
+                    onClick={() => toggleAvailable(p)}
+                    className={`flex items-center justify-center gap-1 px-3 py-2 rounded-lg transition-colors text-sm font-medium ${
+                      p.available === false
+                        ? "bg-green-50 text-green-600 hover:bg-green-100"
+                        : "bg-gray-50 text-gray-600 hover:bg-gray-100"
+                    }`}
+                  >
+                    {p.available === false ? (
+                      <>
+                        <Eye className="w-4 h-4" />
+                        Hiện
+                      </>
+                    ) : (
+                      <>
+                        <EyeOff className="w-4 h-4" />
+                        Ẩn
+                      </>
+                    )}
+                  </button>
+                  
                   <button
                     onClick={() => deleteProduct(p._id)}
-                    className="px-3 py-1 border rounded hover:bg-gray-50"
+                    className="flex items-center justify-center gap-1 px-3 py-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors text-sm font-medium"
                   >
+                    <Trash2 className="w-4 h-4" />
                     Xóa
                   </button>
                 </div>
               </div>
-              <button
-                onClick={() => toggleAvailable(p)}
-                className="mt-2 w-full px-3 py-2 rounded border hover:bg-gray-50"
-              >
-                {p.available === false ? "Mở bán" : "Tạm ẩn"}
-              </button>
             </div>
           ))}
         </div>
       )}
 
-      {/* ✅ Modal Form */}
+      {/* Modal Form */}
       {showForm && (
-        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50">
-          <div className="bg-white w-full max-w-lg rounded p-5 shadow">
-            <h3 className="text-lg font-semibold mb-3">
-              {editing ? "Cập nhật món" : "Thêm món mới"}
-            </h3>
-            <div className="grid grid-cols-1 gap-3">
-              <input
-                className="border rounded px-3 py-2"
-                placeholder="Tên món"
-                value={form.name}
-                onChange={(e) =>
-                  setForm((p) => ({ ...p, name: e.target.value }))
-                }
-              />
-              <textarea
-                rows={3}
-                className="border rounded px-3 py-2"
-                placeholder="Mô tả"
-                value={form.description}
-                onChange={(e) =>
-                  setForm((p) => ({ ...p, description: e.target.value }))
-                }
-              />
-              <input
-                type="number"
-                className="border rounded px-3 py-2"
-                placeholder="Giá (đ)"
-                value={form.price}
-                onChange={(e) =>
-                  setForm((p) => ({ ...p, price: e.target.value }))
-                }
-              />
-              <input
-                className="border rounded px-3 py-2"
-                placeholder="Danh mục (VD: Burger, Pizza)"
-                value={form.category}
-                onChange={(e) =>
-                  setForm((p) => ({ ...p, category: e.target.value }))
-                }
-              />
-              <label className="inline-flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={form.available}
-                  onChange={(e) =>
-                    setForm((p) => ({ ...p, available: e.target.checked }))
-                  }
-                />
-                Đang bán
-              </label>
-              <div>
-                <label className="text-sm block mb-1">Ảnh sản phẩm</label>
-                <input type="file" accept="image/*" onChange={onChooseImage} />
-              </div>
-            </div>
-            <div className="mt-4 flex justify-end gap-2">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl max-h-[90vh] overflow-y-auto">
+            {/* Header */}
+            <div className="bg-gradient-to-r from-orange-600 to-red-600 p-6 flex justify-between items-center">
+              <h3 className="text-2xl font-bold text-white">
+                {editing ? "Cập nhật món ăn" : "Thêm món mới"}
+              </h3>
               <button
                 onClick={() => {
                   setShowForm(false);
                   resetForm();
                 }}
-                className="px-4 py-2 border rounded hover:bg-gray-50"
+                className="text-white hover:bg-white/20 p-2 rounded-lg transition-colors"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="p-6 space-y-5">
+              {/* Image Upload */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Hình ảnh món ăn
+                </label>
+                <div className="relative">
+                  {imagePreview ? (
+                    <div className="relative w-full h-48 rounded-lg overflow-hidden border-2 border-gray-200">
+                      <img
+                        src={imagePreview}
+                        alt="Preview"
+                        className="w-full h-full object-cover"
+                      />
+                      <button
+                        onClick={() => {
+                          setImagePreview(null);
+                          setForm(p => ({ ...p, image: null }));
+                        }}
+                        className="absolute top-2 right-2 bg-red-500 text-white p-2 rounded-lg hover:bg-red-600 transition-colors"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ) : (
+                    <label className="flex flex-col items-center justify-center w-full h-48 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
+                      <ImageIcon className="w-12 h-12 text-gray-400 mb-2" />
+                      <span className="text-sm text-gray-600">Click để chọn ảnh</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={onChooseImage}
+                        className="hidden"
+                      />
+                    </label>
+                  )}
+                </div>
+              </div>
+
+              {/* Name */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Tên món <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                  placeholder="VD: Burger phô mai"
+                  value={form.name}
+                  onChange={(e) =>
+                    setForm((p) => ({ ...p, name: e.target.value }))
+                  }
+                />
+              </div>
+
+              {/* Description */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Mô tả
+                </label>
+                <textarea
+                  rows={3}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent resize-none"
+                  placeholder="Mô tả ngắn về món ăn..."
+                  value={form.description}
+                  onChange={(e) =>
+                    setForm((p) => ({ ...p, description: e.target.value }))
+                  }
+                />
+              </div>
+
+              {/* Price & Category */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Giá <span className="text-red-500">*</span>
+                  </label>
+                  <div className="relative">
+                    <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                    <input
+                      type="number"
+                      className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                      placeholder="50000"
+                      value={form.price}
+                      onChange={(e) =>
+                        setForm((p) => ({ ...p, price: e.target.value }))
+                      }
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Danh mục
+                  </label>
+                  <div className="relative">
+                    <Tag className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                    <input
+                      type="text"
+                      className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                      placeholder="VD: Burger, Pizza, Đồ uống"
+                      value={form.category}
+                      onChange={(e) =>
+                        setForm((p) => ({ ...p, category: e.target.value }))
+                      }
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Available Toggle */}
+              <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-lg">
+                <input
+                  type="checkbox"
+                  id="available"
+                  checked={form.available}
+                  onChange={(e) =>
+                    setForm((p) => ({ ...p, available: e.target.checked }))
+                  }
+                  className="w-5 h-5 text-orange-600 border-gray-300 rounded focus:ring-orange-500"
+                />
+                <label htmlFor="available" className="flex-1 cursor-pointer">
+                  <span className="font-semibold text-gray-800">Hiển thị món này</span>
+                  <p className="text-sm text-gray-600">Khách hàng sẽ thấy món này trong thực đơn</p>
+                </label>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="p-6 bg-gray-50 flex gap-3">
+              <button
+                onClick={() => {
+                  setShowForm(false);
+                  resetForm();
+                }}
+                className="flex-1 px-6 py-3 bg-gray-200 text-gray-700 rounded-xl font-semibold hover:bg-gray-300 transition-colors"
               >
                 Hủy
               </button>
               <button
                 onClick={saveProduct}
-                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                className="flex-1 bg-gradient-to-r from-orange-600 to-red-600 text-white px-6 py-3 rounded-xl font-semibold hover:shadow-lg transition-all duration-200"
               >
-                Lưu
+                {editing ? "Cập nhật" : "Thêm món"}
               </button>
             </div>
           </div>

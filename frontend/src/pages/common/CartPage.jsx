@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
+import { ArrowLeft } from "lucide-react";
 
 export default function CartPage() {
   const navigate = useNavigate();
@@ -12,7 +13,6 @@ export default function CartPage() {
     fetchCart();
   }, []);
 
-  // ✅ Đã thay phần fetchCart cũ bằng bản có xử lý token, 401, 404
   const fetchCart = async () => {
     try {
       setLoading(true);
@@ -34,7 +34,6 @@ export default function CartPage() {
       }
 
       if (res.status === 404) {
-        // user chưa có giỏ hàng -> hiển thị trống
         setCart(null);
         return;
       }
@@ -65,8 +64,7 @@ export default function CartPage() {
           : item
       );
       const newTotal = newItems.reduce(
-        (sum, item) =>
-          sum + Number(item.productId.price) * item.quantity,
+        (sum, item) => sum + Number(item.productId.price) * item.quantity,
         0
       );
       return { ...prevCart, items: newItems, totalPrice: newTotal };
@@ -108,8 +106,7 @@ export default function CartPage() {
       (item) => item.productId._id !== productId
     );
     const newTotal = newItems.reduce(
-      (sum, item) =>
-        sum + Number(item.productId.price) * item.quantity,
+      (sum, item) => sum + Number(item.productId.price) * item.quantity,
       0
     );
     setCart({ ...cart, items: newItems, totalPrice: newTotal });
@@ -149,7 +146,35 @@ export default function CartPage() {
       toast.error("Giỏ hàng trống");
       return;
     }
-    navigate("/orders/new");
+    navigate("/payment");
+  };
+
+  // ✅ Nhóm items theo nhà hàng
+  const groupByRestaurant = () => {
+    if (!cart?.items) return [];
+
+    const groups = {};
+    cart.items.forEach((item) => {
+      const restaurantId =
+        item.productId.restaurantId?._id || item.productId.restaurantId;
+      const restaurantName =
+        item.productId.restaurantId?.name || "Nhà hàng";
+
+      if (!groups[restaurantId]) {
+        groups[restaurantId] = {
+          restaurantId,
+          restaurantName,
+          items: [],
+          subtotal: 0,
+        };
+      }
+
+      groups[restaurantId].items.push(item);
+      groups[restaurantId].subtotal +=
+        Number(item.productId.price) * item.quantity;
+    });
+
+    return Object.values(groups);
   };
 
   if (loading) {
@@ -171,96 +196,130 @@ export default function CartPage() {
           Hãy thêm món ăn vào giỏ để đặt hàng
         </p>
         <button
-          onClick={() => navigate("/products")}
+          onClick={() => navigate("/restaurants")}
           className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition"
         >
-          Xem thực đơn
+          Chọn nhà hàng
         </button>
       </div>
     );
   }
 
+  const restaurantGroups = groupByRestaurant();
+
   return (
     <div className="max-w-4xl mx-auto">
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-2xl font-bold">Giỏ hàng của bạn</h2>
+
+        {/* ✅ Nút tiếp tục mua hàng đẹp hơn */}
         <button
-          onClick={() => navigate("/products")}
-          className="text-blue-600 hover:underline"
+          onClick={() => navigate("/restaurants")}
+          className="flex items-center gap-2 bg-white border border-blue-500 text-blue-600 px-4 py-2 rounded-lg hover:bg-blue-50 shadow-sm transition-all duration-200"
         >
-          ← Tiếp tục mua hàng
+          <ArrowLeft className="w-4 h-4" />
+          <span className="font-medium">Tiếp tục mua hàng</span>
         </button>
       </div>
 
       <div className="bg-white rounded-lg shadow-md overflow-hidden">
-        <div className="p-6">
-          {cart.items.map((item) => (
-            <div
-              key={`${item.productId._id}-${item.quantity}`}
-              className="flex items-center gap-4 py-4 border-b last:border-0"
-            >
-              <div className="w-20 h-20 flex-shrink-0">
-                <img
-                  src={item.productId.image || "/placeholder.png"}
-                  alt={item.productId.name}
-                  className="w-full h-full object-cover rounded"
-                />
-              </div>
-
-              <div className="flex-1">
-                <h3 className="font-semibold text-lg">
-                  {item.productId.name}
-                </h3>
-                <p className="text-green-600 font-bold">
-                  {Number(item.productId.price)?.toLocaleString("vi-VN")}₫
-                </p>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <button
-                  disabled={updating}
-                  onClick={() =>
-                    handleUpdateQuantity(item.productId._id, item.quantity - 1)
-                  }
-                  className="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center hover:bg-gray-100 disabled:opacity-50"
-                >
-                  -
-                </button>
-                <span className="w-8 text-center">{item.quantity}</span>
-                <button
-                  disabled={updating}
-                  onClick={() =>
-                    handleUpdateQuantity(item.productId._id, item.quantity + 1)
-                  }
-                  className="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center hover:bg-gray-100 disabled:opacity-50"
-                >
-                  +
-                </button>
-              </div>
-
-              <div className="text-right min-w-[120px]">
-                <div className="font-bold text-green-600">
-                  {(Number(item.productId.price) * item.quantity).toLocaleString(
-                    "vi-VN"
-                  )}
-                  ₫
+        <div className="p-6 space-y-6">
+          {restaurantGroups.map((group) => (
+            <div key={group.restaurantId} className="border rounded-lg p-4">
+              <div className="flex items-center gap-3 mb-4 pb-3 border-b">
+                <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                  <span className="text-blue-600 font-semibold text-lg">
+                    🏪
+                  </span>
                 </div>
-                <button
-                  disabled={updating}
-                  onClick={() => handleRemoveItem(item.productId._id)}
-                  className="text-red-600 hover:underline text-sm"
-                >
-                  Xóa
-                </button>
+                <div>
+                  <h3 className="font-semibold text-lg">
+                    {group.restaurantName}
+                  </h3>
+                  <p className="text-sm text-gray-500">
+                    {group.items.length} món •{" "}
+                    {group.subtotal.toLocaleString("vi-VN")}₫
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                {group.items.map((item) => (
+                  <div
+                    key={`${item.productId._id}-${item.quantity}`}
+                    className="flex items-center gap-4 p-3 hover:bg-gray-50 rounded-lg transition"
+                  >
+                    <div className="w-20 h-20 flex-shrink-0">
+                      <img
+                        src={item.productId.image || "/placeholder.png"}
+                        alt={item.productId.name}
+                        className="w-full h-full object-cover rounded"
+                      />
+                    </div>
+
+                    <div className="flex-1">
+                      <h4 className="font-semibold">{item.productId.name}</h4>
+                      <p className="text-green-600 font-bold text-sm">
+                        {Number(item.productId.price)?.toLocaleString("vi-VN")}₫
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <button
+                        disabled={updating}
+                        onClick={() =>
+                          handleUpdateQuantity(
+                            item.productId._id,
+                            item.quantity - 1
+                          )
+                        }
+                        className="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center hover:bg-gray-100 disabled:opacity-50"
+                      >
+                        -
+                      </button>
+                      <span className="w-8 text-center font-semibold">
+                        {item.quantity}
+                      </span>
+                      <button
+                        disabled={updating}
+                        onClick={() =>
+                          handleUpdateQuantity(
+                            item.productId._id,
+                            item.quantity + 1
+                          )
+                        }
+                        className="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center hover:bg-gray-100 disabled:opacity-50"
+                      >
+                        +
+                      </button>
+                    </div>
+
+                    <div className="text-right min-w-[120px]">
+                      <div className="font-bold text-green-600">
+                        {(
+                          Number(item.productId.price) * item.quantity
+                        ).toLocaleString("vi-VN")}
+                        ₫
+                      </div>
+                      <button
+                        disabled={updating}
+                        onClick={() => handleRemoveItem(item.productId._id)}
+                        className="text-red-600 hover:underline text-sm mt-1"
+                      >
+                        Xóa
+                      </button>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           ))}
         </div>
 
-        <div className="bg-gray-50 p-6">
-          <div className="flex justify-between mb-4">
+        <div className="bg-gray-50 p-6 border-t">
+          <div className="flex justify-between mb-4 text-lg">
             <span className="font-semibold">Tổng tiền:</span>
-            <span className="text-xl font-bold text-green-600">
+            <span className="text-2xl font-bold text-green-600">
               {Number(cart.totalPrice)?.toLocaleString("vi-VN")}₫
             </span>
           </div>
@@ -268,7 +327,7 @@ export default function CartPage() {
           <button
             onClick={handleCheckout}
             disabled={updating}
-            className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition disabled:opacity-50"
+            className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition disabled:opacity-50 font-semibold"
           >
             {updating ? "Đang xử lý..." : "Tiến hành đặt hàng"}
           </button>

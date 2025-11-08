@@ -1,4 +1,5 @@
 import CartService from "../services/cart.services.js";
+import Cart from "../models/cart.models.js"; // ✅ Thêm dòng này
 
 class CartController {
   async createCart(req, res) {
@@ -10,14 +11,32 @@ class CartController {
     }
   }
 
-  async getLatestCart(req, res) {
-    try {
-      const cart = await CartService.getLatestCartByUser(req.user.id);
-      res.status(200).json(cart);
-    } catch (error) {
-      res.status(404).json({ message: error.message });
+  // ...existing code...
+async getLatestCart(req, res) {
+  try {
+    const userId = req.user.id;
+    // ✅ Xóa điều kiện status nếu không cần
+    const cart = await Cart.findOne({ userId })
+      .populate({
+        path: "items.productId",
+        select: "name price image category restaurantId",
+        populate: {
+          path: "restaurantId",
+          select: "name address phone image"
+        }
+      })
+      .sort({ createdAt: -1 });
+
+    if (!cart) {
+      return res.status(404).json({ message: "Không có giỏ hàng" });
     }
+
+    res.status(200).json(cart);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
   }
+}
+// ...existing code...
 
   async addItem(req, res) {
     try {

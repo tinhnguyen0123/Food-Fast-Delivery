@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { toast } from "react-toastify";
-import { Search, UtensilsCrossed } from "lucide-react";
+import { Search, UtensilsCrossed, ArrowLeft, ShoppingCart } from "lucide-react";
 import ProductCard from "../../components/ProductCard";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:5000";
@@ -11,8 +11,6 @@ export default function ProductsPage() {
   const location = useLocation();
   const params = new URLSearchParams(location.search);
   const category = params.get("category") || "all";
-
-  // 🔹 changed code: lấy restaurantId từ query param
   const restaurantId = params.get("restaurantId") || null;
 
   const [products, setProducts] = useState([]);
@@ -21,9 +19,11 @@ export default function ProductsPage() {
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
 
-  // 🔹 changed code: thêm restaurantId vào dependency
   useEffect(() => {
     fetchProducts();
+    if (restaurantId) {
+      fetchRestaurantInfo();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [category, restaurantId]);
 
@@ -31,7 +31,6 @@ export default function ProductsPage() {
     setLoading(true);
     try {
       let url;
-      // 🔹 changed code: nếu có restaurantId thì fetch theo nhà hàng
       if (restaurantId) {
         url = `${API_BASE}/api/product/restaurant/${encodeURIComponent(restaurantId)}`;
       } else {
@@ -45,13 +44,24 @@ export default function ProductsPage() {
       }
 
       const data = await res.json();
-      // 🔹 changed code: đảm bảo data là array
       setProducts(Array.isArray(data) ? data : data.items || data);
     } catch (err) {
       console.error("Fetch products error:", err);
       toast.error(err.message || "Không thể tải sản phẩm");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchRestaurantInfo = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/api/restaurant/${restaurantId}`);
+      if (res.ok) {
+        const data = await res.json();
+        setSelectedRestaurant(data);
+      }
+    } catch (err) {
+      console.error("Fetch restaurant error:", err);
     }
   };
 
@@ -108,96 +118,121 @@ export default function ProductsPage() {
     }
   };
 
-  // Lọc sản phẩm hoặc nhà hàng
+  // Lọc sản phẩm
   const filteredProducts = products.filter((p) =>
     p.name?.toLowerCase().includes(query.trim().toLowerCase())
   );
-  const filteredRestaurants = restaurants.filter((r) =>
-    r.name?.toLowerCase().includes(query.trim().toLowerCase())
-  );
 
-  const handleSelectRestaurant = (id) => {
-    navigate(`/products?restaurantId=${id}`);
-  };
   const handleBackToRestaurants = () => {
     navigate("/restaurants");
   };
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-60">
+      <div className="min-h-screen bg-gradient-to-br from-orange-50 via-yellow-50 to-red-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin h-8 w-8 border-4 border-blue-600 border-t-transparent rounded-full mx-auto" />
-          <p className="mt-3 text-gray-600">Đang tải sản phẩm...</p>
+          <div className="animate-spin h-12 w-12 border-4 border-orange-600 border-t-transparent rounded-full mx-auto mb-4" />
+          <p className="text-gray-600 font-medium">Đang tải món ngon...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div>
-      {/* Thanh tiêu đề và tìm kiếm */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 gap-4">
-        <div className="flex items-center gap-3">
-          {restaurantId && (
-            <button
-              onClick={handleBackToRestaurants}
-              className="text-blue-600 hover:underline"
-            >
-              &larr; Quay lại
-            </button>
-          )}
-          <h2 className="text-2xl font-bold text-gray-800">
-            {restaurantId
-              ? `Thực đơn ${selectedRestaurant?.name || ""}`
-              : "Chọn nhà hàng"}
-          </h2>
+    <div className="min-h-screen bg-gradient-to-br from-orange-50 via-yellow-50 to-red-50">
+      <div className="max-w-7xl mx-auto px-4 py-8">
+        {/* Header với thông tin nhà hàng */}
+        {restaurantId && selectedRestaurant && (
+          <div className="mb-8 bg-white rounded-2xl shadow-lg overflow-hidden">
+            <div className="relative h-48 bg-gradient-to-r from-orange-400 to-red-400">
+              {selectedRestaurant.image ? (
+                <img
+                  src={selectedRestaurant.image}
+                  alt={selectedRestaurant.name}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center">
+                  <UtensilsCrossed className="w-20 h-20 text-white/50" />
+                </div>
+              )}
+              <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+              <button
+                onClick={handleBackToRestaurants}
+                className="absolute top-4 left-4 bg-white/90 backdrop-blur-sm px-4 py-2 rounded-lg hover:bg-white transition-all flex items-center gap-2 shadow-lg"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                <span className="font-medium">Danh sách nhà hàng</span>
+              </button>
+            </div>
+            <div className="p-6">
+              <h1 className="text-3xl font-bold text-gray-800 mb-2">
+                {selectedRestaurant.name}
+              </h1>
+              {selectedRestaurant.description && (
+                <p className="text-gray-600 mb-4">{selectedRestaurant.description}</p>
+              )}
+              {selectedRestaurant.address && (
+                <p className="text-sm text-gray-500">📍 {selectedRestaurant.address}</p>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Search Bar */}
+        <div className="mb-8">
+          <div className="bg-white rounded-2xl shadow-lg p-4">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+              <div className="flex-1 relative">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <input
+                  type="text"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="Tìm kiếm món ăn..."
+                  className="w-full pl-12 pr-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all"
+                />
+              </div>
+              <div className="flex items-center gap-4">
+                <div className="bg-orange-50 px-4 py-3 rounded-xl">
+                  <span className="text-sm text-gray-600">
+                    Tổng: <span className="font-bold text-orange-600">{filteredProducts.length}</span> món
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
-        <div className="relative w-full sm:w-72">
-          <Search className="absolute left-3 top-2.5 text-gray-400 w-5 h-5" />
-          <input
-            type="text"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder={restaurantId ? "Tìm món..." : "Tìm nhà hàng..."}
-            className="w-full pl-10 pr-4 py-2 border rounded-xl shadow-sm text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200"
-          />
-        </div>
-
-        <div className="text-sm text-gray-600">
-          Tổng: {restaurantId ? filteredProducts.length : filteredRestaurants.length}
-        </div>
-      </div>
-
-      {/* Hiển thị danh sách nhà hàng hoặc sản phẩm */}
-      {restaurantId ? (
-        // Chế độ xem sản phẩm
-        filteredProducts.length === 0 ? (
-          <div className="text-center text-gray-500 py-10">
-            Không có món nào phù hợp
+        {/* Danh sách sản phẩm */}
+        {filteredProducts.length === 0 ? (
+          <div className="text-center py-20 bg-white rounded-2xl shadow-lg">
+            <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <UtensilsCrossed className="w-10 h-10 text-gray-400" />
+            </div>
+            <h3 className="text-xl font-semibold text-gray-800 mb-2">
+              Không tìm thấy món ăn
+            </h3>
+            <p className="text-gray-600 mb-6">
+              Thử tìm kiếm với từ khóa khác hoặc xem thực đơn khác
+            </p>
+            {query && (
+              <button
+                onClick={() => setQuery("")}
+                className="px-6 py-2 bg-orange-600 text-white rounded-xl hover:bg-orange-700 transition-colors"
+              >
+                Xóa bộ lọc
+              </button>
+            )}
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {filteredProducts.map((p) => (
               <ProductCard key={p._id} product={p} onAdd={handleAddToCart} />
             ))}
           </div>
-        )
-      ) : (
-        // Chế độ xem nhà hàng
-        filteredRestaurants.length === 0 ? (
-          <div className="text-center text-gray-500 py-10">
-            Không có nhà hàng nào phù hợp
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-            {filteredRestaurants.map((r) => (
-              <RestaurantCard key={r._id} restaurant={r} onClick={() => handleSelectRestaurant(r._id)} />
-            ))}
-          </div>
-        )
-      )}
+        )}
+      </div>
     </div>
   );
 }

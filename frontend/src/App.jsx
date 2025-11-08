@@ -1,4 +1,3 @@
-// ...existing code...
 import { useEffect } from "react"
 import { Routes, Route, useLocation, useNavigate, Navigate } from "react-router-dom"
 import { ToastContainer } from "react-toastify"
@@ -12,15 +11,12 @@ import ProtectedRoute from "./components/ProtectedRoute"
 import HomePage from "./pages/common/HomePage"
 import LoginPage from "./pages/common/LoginPage"
 import RegisterPage from "./pages/common/RegisterPage"
-import ProfilePage from "./pages/ProfilePage"
+import ProfilePage from "./pages/common/ProfilePage"
 import ProductsPage from "./pages/common/ProductsPage"
 import CartPage from "./pages/common/CartPage"
-import CheckoutPage from "./pages/common/CheckoutPage"
 import OrdersPage from "./pages/common/OrdersPage"
 import OrderDetailPage from "./pages/common/OrderDetailPage"
 import PaymentPage from "./pages/common/PaymentPage"
-
-// 🔹 changed code: import RestaurantsPage
 import RestaurantsPage from "./pages/common/RestaurantsPage"
 
 // Restaurant pages
@@ -39,17 +35,25 @@ function App() {
   const navigate = useNavigate()
   const location = useLocation()
 
-  // ✅ Tự động điều hướng theo môi trường (VD: admin, restaurant, customer)
+  // ✅ Tự động điều hướng theo role khi vào trang chủ
   useEffect(() => {
-    const target = (import.meta.env.VITE_TARGET || "customer").toUpperCase()
-    const defaultRoute = import.meta.env[`VITE_DEFAULT_ROUTE_${target}`]
+    if (location.pathname === "/") {
+      const user = JSON.parse(localStorage.getItem("user") || "null");
+      const token = localStorage.getItem("token");
 
-    if (location.pathname === "/" && defaultRoute) {
-      navigate(defaultRoute, { replace: true })
+      if (token && user) {
+        // Điều hướng theo role
+        if (user.role === "admin") {
+          navigate("/admin/orders", { replace: true });
+        } else if (user.role === "restaurant") {
+          navigate("/restaurant/dashboard", { replace: true });
+        }
+        // Customer thì ở lại trang chủ
+      }
     }
   }, [location.pathname, navigate])
 
-  // ✅ Chỉ ẩn Navbar cho các route bắt đầu chính xác bằng "/restaurant" (không ẩn "/restaurants")
+  // ✅ Chỉ ẩn Navbar cho các route quản trị
   const hideNavbar =
     /^\/restaurant(\/|$)/.test(location.pathname) ||
     location.pathname.startsWith("/admin")
@@ -60,31 +64,45 @@ function App() {
         position="top-right"
         autoClose={3000}
         hideProgressBar={false}
+        newestOnTop
         closeOnClick
         pauseOnHover
         draggable
         theme="light"
       />
 
-      {/* ✅ Chỉ hiển thị Navbar nếu không thuộc khu vực quản trị hoặc route restaurant dashboard */}
+      {/* ✅ Chỉ hiển thị Navbar cho customer */}
       {!hideNavbar && <Navbar />}
 
       <main className="p-6">
         <Routes>
-          {/* 🌐 Public routes */}
+          {/* 🌐 Public routes (chỉ cho customer chưa đăng nhập) */}
           <Route path="/" element={<HomePage />} />
-          <Route path="/products" element={<ProductsPage />} />
-          {/* 🔹 changed code: thêm route /restaurants */}
-          <Route path="/restaurants" element={<RestaurantsPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/register-restaurant" element={<RestaurantRegisterPage />} />
 
-          {/* 👤 Protected user routes */}
+          {/* 👤 Customer-only routes */}
+          <Route
+            path="/products"
+            element={
+              <ProtectedRoute allowedRoles={['customer']}>
+                <ProductsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/restaurants"
+            element={
+              <ProtectedRoute allowedRoles={['customer']}>
+                <RestaurantsPage />
+              </ProtectedRoute>
+            }
+          />
           <Route
             path="/profile"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute allowedRoles={['customer']}>
                 <ProfilePage />
               </ProtectedRoute>
             }
@@ -92,23 +110,15 @@ function App() {
           <Route
             path="/cart"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute allowedRoles={['customer']}>
                 <CartPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/orders/new"
-            element={
-              <ProtectedRoute>
-                <CheckoutPage />
               </ProtectedRoute>
             }
           />
           <Route
             path="/orders"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute allowedRoles={['customer']}>
                 <OrdersPage />
               </ProtectedRoute>
             }
@@ -116,7 +126,7 @@ function App() {
           <Route
             path="/orders/:id"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute allowedRoles={['customer']}>
                 <OrderDetailPage />
               </ProtectedRoute>
             }
@@ -124,13 +134,13 @@ function App() {
           <Route
             path="/payment"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute allowedRoles={['customer']}>
                 <PaymentPage />
               </ProtectedRoute>
             }
           />
 
-          {/* 🍽️ Restaurant dashboard */}
+          {/* 🍽️ Restaurant dashboard (chỉ cho restaurant) */}
           <Route
             path="/restaurant/dashboard"
             element={
@@ -140,7 +150,7 @@ function App() {
             }
           />
 
-          {/* 👑 Admin dashboard (nested routes) */}
+          {/* 👑 Admin dashboard (chỉ cho admin) */}
           <Route
             path="/admin/*"
             element={
@@ -149,13 +159,15 @@ function App() {
               </ProtectedRoute>
             }
           >
-            <Route index element={<Navigate to="orders" replace />} />
             <Route path="orders" element={<ManagementOrders />} />
             <Route path="users" element={<ManagementUsers />} />
             <Route path="restaurants" element={<ManagementRestaurants />} />
             <Route path="drones" element={<ManagementDrones />} />
             <Route path="analytics" element={<AnalyticsPage />} />
           </Route>
+
+          {/* 404 - Redirect về trang tương ứng */}
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
     </div>
