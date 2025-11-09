@@ -190,7 +190,8 @@ export default function ProductsPage() {
         {/* Danh mục */}
         <div
           className="bg-white rounded-2xl shadow-lg p-4 mb-4"
-          style={{ display: restaurantId ? "block" : "none" }} // Chỉ hiện danh mục khi ở trang nhà hàng
+          style={{ display: restaurantId ? "block" : "block" }} // Chỉ hiện danh mục khi ở trang nhà hàng và trang sản phẩm lun
+          // style={{ display: restaurantId ? "block" : "none" }} // Chỉ hiện danh mục khi ở trang nhà hàng
         >
           <div className="flex flex-wrap gap-2">
             <button
