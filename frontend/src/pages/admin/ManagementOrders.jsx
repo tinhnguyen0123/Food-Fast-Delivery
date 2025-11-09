@@ -332,17 +332,17 @@ export default function OrdersPage() {
                       </td>
                       <td className="py-4 px-6">
                         <div className="text-sm font-medium text-gray-800">
-                          {order.customer?.name || order.customer || "-"}
+                          {order.userId?.name || "-"}
                         </div>
-                        {order.customer?.email && (
+                        {order.userId?.email && (
                           <div className="text-xs text-gray-500">
-                            {order.customer.email}
+                            {order.userId.email}
                           </div>
                         )}
                       </td>
                       <td className="py-4 px-6">
                         <div className="text-sm font-medium text-gray-800">
-                          {order.restaurant?.name || order.restaurant || "-"}
+                          {order.restaurantId?.name || "-"}
                         </div>
                       </td>
                       <td className="py-4 px-6">
@@ -355,7 +355,7 @@ export default function OrdersPage() {
                       </td>
                       <td className="py-4 px-6">
                         <div className="text-sm font-bold text-green-600">
-                          ${order.total?.toLocaleString() || "0"}
+                          {order.totalPrice?.toLocaleString() || "0"}₫
                         </div>
                       </td>
                       <td className="py-4 px-6">

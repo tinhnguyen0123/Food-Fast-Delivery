@@ -7,6 +7,14 @@ class OrderRepository {
     return await order.save();
   }
 
+  async getAllOrders() {
+  return await Order.find()
+    .populate("userId", "name email")
+    .populate("restaurantId", "name address")
+    .sort({ createdAt: -1 });
+}
+
+
   // Lấy đơn hàng theo ID
   async getOrderById(orderId) {
     return await Order.findById(orderId)

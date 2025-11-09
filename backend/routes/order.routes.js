@@ -22,6 +22,9 @@ orderRouter.put("/:id/confirm-completed", verifyToken, OrderController.confirmCo
 // ✅ Lấy chi tiết đơn hàng theo ID
 orderRouter.get("/:id", OrderController.getById);
 
+// ✅ Lấy tất cả đơn hàng
+orderRouter.get("/", OrderController.getAll);
+
 // ✅ Cập nhật đơn hàng (được chặn nếu status = 'completed' mà không phải customer)
 orderRouter.put("/:id", OrderController.update);
 

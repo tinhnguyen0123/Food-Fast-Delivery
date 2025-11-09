@@ -21,6 +21,17 @@ class OrderController {
     }
   }
 
+  // ✅ Lấy tất cả đơn hàng
+  async getAll(req, res) {
+    try {
+      const orders = await OrderService.getAllOrders();
+      res.status(200).json(orders);
+    } catch (e) {
+      res.status(400).json({ message: e.message });
+    }
+  }
+
+
   // ✅ Lấy danh sách đơn hàng theo User
   async getByUser(req, res) {
     try {

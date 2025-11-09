@@ -95,6 +95,11 @@ class OrderService {
     return createdOrders;
   }
 
+  async getAllOrders() {
+    return await OrderRepository.getAllOrders();
+  }
+
+
   async getOrderById(orderId) {
     const order = await OrderRepository.getOrderById(orderId);
     if (!order) throw new Error("Không tìm thấy đơn hàng");
