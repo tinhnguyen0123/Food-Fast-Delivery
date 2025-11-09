@@ -1,4 +1,3 @@
-// src/components/Footer.jsx
 import { Truck } from 'lucide-react';
 
 export default function Footer() {

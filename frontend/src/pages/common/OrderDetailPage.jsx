@@ -20,6 +20,7 @@ export default function OrderDetailPage() {
   const navigate = useNavigate();
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [confirming, setConfirming] = useState(false);
 
   useEffect(() => {
     loadOrder();
@@ -75,6 +76,35 @@ export default function OrderDetailPage() {
     return configs[status] || configs.pending;
   };
 
+  const confirmOrderReceived = async () => {
+    if (!order || order.status !== "delivering") return;
+    if (!window.confirm("Xác nhận bạn đã nhận đơn hàng?")) return;
+    try {
+      setConfirming(true);
+      const token = localStorage.getItem("token");
+      const res = await fetch(`http://localhost:5000/api/order/${order._id}/confirm-completed`, {
+        method: "PUT",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Xác nhận thất bại");
+      setOrder((prev) => ({ ...prev, status: "completed" }));
+      toast.success("Đã xác nhận hoàn thành đơn hàng");
+
+      // Dọn thông báo liên quan
+      try {
+        const list = JSON.parse(localStorage.getItem("notifQueue") || "[]");
+        const filtered = list.filter((n) => n.orderId !== order._id);
+        localStorage.setItem("notifQueue", JSON.stringify(filtered));
+      } catch {}
+    } catch (e) {
+      console.error(e);
+      toast.error(e.message || "Lỗi xác nhận");
+    } finally {
+      setConfirming(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 flex items-center justify-center">
@@ -122,7 +152,6 @@ export default function OrderDetailPage() {
             <ArrowLeft className="w-5 h-5" />
             <span className="font-medium">Quay lại danh sách đơn hàng</span>
           </button>
-          
           <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
             Chi tiết đơn hàng
           </h1>
@@ -130,7 +159,6 @@ export default function OrderDetailPage() {
 
         {/* Order Info Card */}
         <div className="bg-white rounded-2xl shadow-xl overflow-hidden mb-6">
-          {/* Header với gradient */}
           <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-6">
             <div className="flex justify-between items-start text-white">
               <div>
@@ -140,7 +168,6 @@ export default function OrderDetailPage() {
                 </div>
                 <p className="text-white/90 font-mono text-sm">#{order._id.slice(-8)}</p>
               </div>
-              
               <div className={`px-4 py-2 rounded-xl text-sm font-semibold border-2 flex items-center gap-2 ${statusConfig.color}`}>
                 <StatusIcon className="w-4 h-4" />
                 {statusConfig.text}
@@ -148,9 +175,8 @@ export default function OrderDetailPage() {
             </div>
           </div>
 
-          {/* Body */}
           <div className="p-6 space-y-6">
-            {/* Thông tin đơn hàng */}
+            {/* Order Details */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="flex items-start gap-3 p-4 bg-gray-50 rounded-lg">
                 <Calendar className="w-5 h-5 text-blue-600 mt-1" />
@@ -167,7 +193,6 @@ export default function OrderDetailPage() {
                   </p>
                 </div>
               </div>
-
               <div className="flex items-start gap-3 p-4 bg-gray-50 rounded-lg">
                 <DollarSign className="w-5 h-5 text-green-600 mt-1" />
                 <div>
@@ -183,7 +208,7 @@ export default function OrderDetailPage() {
               </div>
             </div>
 
-            {/* Chi tiết món ăn */}
+            {/* Items */}
             <div className="border-t pt-6">
               <h3 className="font-semibold text-lg text-gray-800 mb-4 flex items-center gap-2">
                 <ShoppingBag className="w-5 h-5 text-blue-600" />
@@ -191,16 +216,10 @@ export default function OrderDetailPage() {
               </h3>
               <div className="space-y-3">
                 {order.items.map((item) => {
-                  const unitPrice = Number(
-                    item.priceAtOrderTime ?? item.productId?.price ?? 0
-                  );
+                  const unitPrice = Number(item.priceAtOrderTime ?? item.productId?.price ?? 0);
                   const lineTotal = unitPrice * Number(item.quantity || 0);
-
                   return (
-                    <div
-                      key={item.productId._id || item.productId}
-                      className="flex justify-between items-center p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
-                    >
+                    <div key={item.productId._id || item.productId} className="flex justify-between items-center p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
                       <div className="flex items-center gap-4">
                         <div className="w-16 h-16 bg-gradient-to-br from-blue-100 to-purple-100 rounded-lg flex items-center justify-center">
                           <span className="text-3xl">🍔</span>
@@ -223,7 +242,7 @@ export default function OrderDetailPage() {
               </div>
             </div>
 
-            {/* Địa chỉ giao hàng */}
+            {/* Shipping Address */}
             {order.shippingAddress && (
               <div className="border-t pt-6">
                 <h3 className="font-semibold text-lg text-gray-800 mb-4 flex items-center gap-2">
@@ -242,7 +261,7 @@ export default function OrderDetailPage() {
               </div>
             )}
 
-            {/* Thông tin nhà hàng */}
+            {/* Restaurant Info */}
             {order.restaurantId && (
               <div className="border-t pt-6">
                 <h3 className="font-semibold text-lg text-gray-800 mb-4 flex items-center gap-2">
@@ -259,7 +278,7 @@ export default function OrderDetailPage() {
               </div>
             )}
 
-            {/* Tổng tiền */}
+            {/* Total */}
             <div className="border-t pt-6">
               <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-6 rounded-xl">
                 <div className="flex justify-between items-center">
@@ -275,6 +294,20 @@ export default function OrderDetailPage() {
                 </div>
               </div>
             </div>
+
+            {/* Confirm Order Button */}
+            {order.status === "delivering" && (
+              <div className="mt-8">
+                <button
+                  disabled={confirming}
+                  onClick={confirmOrderReceived}
+                  className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-semibold bg-gradient-to-r from-green-600 to-emerald-600 text-white hover:shadow-lg transition disabled:opacity-50"
+                >
+                  <CheckCircle className="w-5 h-5" />
+                  {confirming ? "Đang xác nhận..." : "Xác nhận đã nhận hàng"}
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>

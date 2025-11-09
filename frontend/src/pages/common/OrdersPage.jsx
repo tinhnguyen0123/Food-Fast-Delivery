@@ -74,27 +74,6 @@ export default function OrdersPage() {
     }
   };
 
-  const confirmReceived = async (orderId) => {
-    if (!window.confirm("Xác nhận bạn đã nhận được đơn hàng?")) return;
-    try {
-      const res = await fetch(`${API_BASE}/api/order/${orderId}/confirm-completed`, {
-        method: "PUT",
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || "Xác nhận thất bại");
-
-      // ✅ Cập nhật UI
-      setOrders((prev) =>
-        prev.map((o) => (o._id === orderId ? { ...o, status: "completed" } : o))
-      );
-      toast.success("Đã xác nhận hoàn thành đơn hàng");
-    } catch (e) {
-      console.error(e);
-      toast.error(e.message || "Lỗi xác nhận");
-    }
-  };
-
   const cancelOrderById = async (orderId) => {
     if (!orderId) return;
     if (!window.confirm("Bạn có chắc muốn hủy đơn này?")) return;
@@ -358,19 +337,6 @@ export default function OrdersPage() {
                           >
                             <XCircle className="w-4 h-4" />
                             Hủy đơn
-                          </button>
-                        )}
-
-                        {order.status === "delivering" && (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              confirmReceived(order._id);
-                            }}
-                            className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors text-sm font-semibold flex items-center gap-2"
-                          >
-                            <CheckCircle className="w-4 h-4" />
-                            Xác nhận đã nhận hàng
                           </button>
                         )}
 
