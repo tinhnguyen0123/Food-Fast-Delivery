@@ -40,11 +40,20 @@ export default function CartPage() {
 
       if (!res.ok) {
         const err = await res.text();
-        throw new Error(err || "Failed to fetch cart");
+        throw new Error(err || "Không thể tải giỏ hàng");
       }
 
       const data = await res.json();
       setCart(data);
+
+      // 🔹 Hiển thị cảnh báo món bị xóa
+      if (data._sanitized && Array.isArray(data._removedItems)) {
+        data._removedItems.forEach((name) =>
+          toast.warning(
+            `Món '${name}' đã bị xóa vì nhà hàng không còn khả dụng`
+          )
+        );
+      }
     } catch (err) {
       console.error("Fetch cart error:", err);
       toast.error(err.message || "Không thể tải giỏ hàng");
@@ -91,6 +100,14 @@ export default function CartPage() {
 
       const updatedCart = await res.json();
       setCart(updatedCart);
+
+      if (updatedCart._sanitized && Array.isArray(updatedCart._removedItems)) {
+        updatedCart._removedItems.forEach((name) =>
+          toast.warning(
+            `Món '${name}' đã bị xóa vì nhà hàng không còn khả dụng`
+          )
+        );
+      }
     } catch (err) {
       setCart(previousCart);
       console.error("Update quantity error:", err);
@@ -100,11 +117,9 @@ export default function CartPage() {
     }
   };
 
-  // ✅ Phiên bản mới của handleRemoveItem
   const handleRemoveItem = async (productId) => {
     const previousCart = { ...cart };
 
-    // an toàn khi so sánh id (productId có thể là object hoặc string)
     const idOf = (it) =>
       ((it.productId && (it.productId._id || it.productId)) || "").toString();
 
@@ -138,9 +153,7 @@ export default function CartPage() {
 
       if (!res.ok) throw new Error("Failed to remove item");
 
-      // đảm bảo nhận cart đã populate (image, product.name, restaurant.name)
       await loadCart();
-
       toast.success("Đã xóa món khỏi giỏ");
     } catch (err) {
       setCart(previousCart);
@@ -159,7 +172,6 @@ export default function CartPage() {
     navigate("/payment");
   };
 
-  // ✅ Nhóm items theo nhà hàng
   const groupByRestaurant = () => {
     if (!cart?.items) return [];
 
@@ -221,8 +233,6 @@ export default function CartPage() {
     <div className="max-w-4xl mx-auto">
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-2xl font-bold">Giỏ hàng của bạn</h2>
-
-        {/* ✅ Nút tiếp tục mua hàng đẹp hơn */}
         <button
           onClick={() => navigate("/restaurants")}
           className="flex items-center gap-2 bg-white border border-blue-500 text-blue-600 px-4 py-2 rounded-lg hover:bg-blue-50 shadow-sm transition-all duration-200"
@@ -238,14 +248,10 @@ export default function CartPage() {
             <div key={group.restaurantId} className="border rounded-lg p-4">
               <div className="flex items-center gap-3 mb-4 pb-3 border-b">
                 <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                  <span className="text-blue-600 font-semibold text-lg">
-                    🏪
-                  </span>
+                  <span className="text-blue-600 font-semibold text-lg">🏪</span>
                 </div>
                 <div>
-                  <h3 className="font-semibold text-lg">
-                    {group.restaurantName}
-                  </h3>
+                  <h3 className="font-semibold text-lg">{group.restaurantName}</h3>
                   <p className="text-sm text-gray-500">
                     {group.items.length} món •{" "}
                     {group.subtotal.toLocaleString("vi-VN")}₫
@@ -266,7 +272,6 @@ export default function CartPage() {
                         className="w-full h-full object-cover rounded"
                       />
                     </div>
-
                     <div className="flex-1">
                       <h4 className="font-semibold">{item.productId.name}</h4>
                       <p className="text-green-600 font-bold text-sm">
@@ -278,25 +283,17 @@ export default function CartPage() {
                       <button
                         disabled={updating}
                         onClick={() =>
-                          handleUpdateQuantity(
-                            item.productId._id,
-                            item.quantity - 1
-                          )
+                          handleUpdateQuantity(item.productId._id, item.quantity - 1)
                         }
                         className="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center hover:bg-gray-100 disabled:opacity-50"
                       >
                         -
                       </button>
-                      <span className="w-8 text-center font-semibold">
-                        {item.quantity}
-                      </span>
+                      <span className="w-8 text-center font-semibold">{item.quantity}</span>
                       <button
                         disabled={updating}
                         onClick={() =>
-                          handleUpdateQuantity(
-                            item.productId._id,
-                            item.quantity + 1
-                          )
+                          handleUpdateQuantity(item.productId._id, item.quantity + 1)
                         }
                         className="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center hover:bg-gray-100 disabled:opacity-50"
                       >
@@ -306,10 +303,7 @@ export default function CartPage() {
 
                     <div className="text-right min-w-[120px]">
                       <div className="font-bold text-green-600">
-                        {(
-                          Number(item.productId.price) * item.quantity
-                        ).toLocaleString("vi-VN")}
-                        ₫
+                        {(Number(item.productId.price) * item.quantity).toLocaleString("vi-VN")}₫
                       </div>
                       <button
                         disabled={updating}

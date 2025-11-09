@@ -69,16 +69,18 @@ export default function PaymentPage() {
       const res = await fetch("http://localhost:5000/api/cart/latest", {
         headers: { Authorization: `Bearer ${token}` },
       });
-      if (!res.ok) {
-        toast.error("Không thể tải giỏ hàng");
-        navigate("/products");
-        return;
-      }
+      if (!res.ok) throw new Error("Không thể tải giỏ hàng");
       const data = await res.json();
       setCart(data);
-    } catch (err) {
-      console.error(err);
-      toast.error("Lỗi khi tải giỏ hàng");
+
+      // 🔹 Hiển thị cảnh báo món bị loại
+      if (data._sanitized && data._removedItems?.length) {
+        data._removedItems.forEach((n) =>
+          toast.warning(`Món '${n}' đã bị loại khỏi giỏ (nhà hàng bị khóa)`)
+        );
+      }
+    } catch (e) {
+      toast.error(e.message || "Lỗi khi tải giỏ hàng");
     } finally {
       setLoading(false);
     }
@@ -149,7 +151,8 @@ export default function PaymentPage() {
       if (!product) return;
 
       const restaurantId = product?.restaurantId?._id || product?.restaurantId;
-      const restaurantName = product?.restaurantId?.name || "Nhà hàng chưa xác định";
+      const restaurantName =
+        product?.restaurantId?.name || "Nhà hàng chưa xác định";
 
       if (!groups[restaurantId]) {
         groups[restaurantId] = {
@@ -169,15 +172,30 @@ export default function PaymentPage() {
     return Object.values(groups);
   };
 
-  // Xác nhận đặt hàng
-  const handleConfirm = async () => {
+  // Tạo đơn hàng
+  const handleCreateOrders = async () => {
     if (!cart?.items?.length) {
       toast.error("Giỏ hàng trống");
       return;
     }
 
-    if (!address.trim()) {
-      toast.error("Vui lòng chọn địa chỉ giao hàng trên bản đồ");
+    // 🔹 Re-check giỏ hàng trước khi tạo đơn
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch("http://localhost:5000/api/cart/latest", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const latest = await res.json();
+      if (latest._sanitized) {
+        toast.warning(
+          "Giỏ hàng đã được cập nhật do nhà hàng bị khóa. Vui lòng kiểm tra lại."
+        );
+        setCart(latest);
+        return;
+      }
+    } catch (err) {
+      console.error("Error re-check cart:", err);
+      toast.error("Không thể kiểm tra giỏ hàng");
       return;
     }
 
@@ -185,7 +203,6 @@ export default function PaymentPage() {
     try {
       const token = localStorage.getItem("token");
       const user = JSON.parse(localStorage.getItem("user") || "{}");
-
       const restaurantGroups = groupByRestaurant();
 
       for (const group of restaurantGroups) {
@@ -199,10 +216,7 @@ export default function PaymentPage() {
           })),
           totalPrice: group.subtotal,
           paymentMethod,
-          shippingAddress: {
-            text: address,
-            location: position,
-          },
+          shippingAddress: { text: address, location: position },
         };
 
         const res = await fetch("http://localhost:5000/api/order", {
@@ -217,7 +231,6 @@ export default function PaymentPage() {
         if (!res.ok) throw new Error("Tạo đơn thất bại");
         const created = await res.json();
 
-        // Thanh toán online
         if (paymentMethod === "VNPAY") {
           const payRes = await fetch(`http://localhost:5000/api/payment`, {
             method: "POST",
@@ -397,7 +410,7 @@ export default function PaymentPage() {
             </button>
             <button
               disabled={creating}
-              onClick={handleConfirm}
+              onClick={handleCreateOrders}
               className="flex-1 bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition font-semibold disabled:opacity-50"
             >
               {creating ? "Đang xử lý..." : "Xác nhận"}
