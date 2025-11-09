@@ -56,7 +56,7 @@ export default function ProductsPage() {
       }
     };
     loadProducts();
-  }, [selectedCategory, restaurantId]);
+  }, [restaurantId]); // Chỉ chạy lại khi restaurantId thay đổi
 
   // Load info nhà hàng nếu có restaurantId
   useEffect(() => {
@@ -125,9 +125,13 @@ export default function ProductsPage() {
     }
   };
 
-  const filteredProducts = products.filter((p) =>
-    p.name?.toLowerCase().includes(query.trim().toLowerCase())
-  );
+  // Lọc sản phẩm theo category và query tìm kiếm
+  const filteredProducts = products.filter((p) => {
+    const matchesCategory =
+      selectedCategory === "all" || p.category === selectedCategory;
+    const matchesQuery = p.name?.toLowerCase().includes(query.trim().toLowerCase());
+    return matchesCategory && matchesQuery;
+  });
 
   const handleBackToRestaurants = () => navigate("/restaurants");
 
@@ -184,7 +188,10 @@ export default function ProductsPage() {
         )}
 
         {/* Danh mục */}
-        <div className="bg-white rounded-2xl shadow-lg p-4 mb-4">
+        <div
+          className="bg-white rounded-2xl shadow-lg p-4 mb-4"
+          style={{ display: restaurantId ? "block" : "none" }} // Chỉ hiện danh mục khi ở trang nhà hàng
+        >
           <div className="flex flex-wrap gap-2">
             <button
               onClick={() => setSelectedCategory("all")}
