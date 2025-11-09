@@ -196,10 +196,10 @@ export default function CartPage() {
           Hãy thêm món ăn vào giỏ để đặt hàng
         </p>
         <button
-          onClick={() => navigate("/restaurants")}
+          onClick={() => navigate("/products")}
           className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition"
         >
-          Chọn nhà hàng
+          Chọn món ăn
         </button>
       </div>
     );
