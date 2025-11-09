@@ -46,14 +46,18 @@ export default function DronesPage() {
         });
         if (!mounted) return;
         if (!res.ok) {
-          setDrones([]);
-          return;
+          const errorData = await res.json();
+          throw new Error(errorData.message || "Failed to fetch drones");
         }
         const data = await res.json();
-        setDrones(Array.isArray(data) ? data : data.drones || []);
+        if (mounted) {
+          setDrones(Array.isArray(data) ? data : data.drones || []);
+        }
       } catch (err) {
-        console.error("fetch drones", err);
-        setError("Failed to load drones");
+        if (mounted) {
+          console.error("fetch drones", err);
+          setError(err.message || "Failed to load drones");
+        }
       } finally {
         if (mounted) setLoading(false);
       }
@@ -95,7 +99,7 @@ export default function DronesPage() {
   const filtered = drones.filter((d) => {
     const matchesSearch =
       !search ||
-      (d.droneId && d.droneId.toUpperCase().includes(search.toUpperCase()));
+      (d.code?.toLowerCase().includes(search.toLowerCase()));
     const matchesFilter = filter === "all" || d.status === filter;
     return matchesSearch && matchesFilter;
   });
@@ -110,7 +114,7 @@ export default function DronesPage() {
     avgBattery:
       drones.length > 0
         ? Math.round(
-            drones.reduce((sum, d) => sum + (d.battery ?? 0), 0) / drones.length
+            drones.reduce((sum, d) => sum + (d.batteryLevel ?? 0), 0) / drones.length
           )
         : 0,
   };
@@ -123,44 +127,7 @@ export default function DronesPage() {
     { value: "offline", label: "Offline", count: stats.offline },
   ];
 
-  // Sample data for testing
-  const sample = [
-    {
-      id: "1",
-      droneId: "DRONE-001",
-      status: "active",
-      battery: 85,
-      load: 3.2,
-      maxLoad: 5,
-      currentOrder: "ORD-001",
-      location: "District 1, HCMC",
-      lastUpdated: "2 mins ago",
-    },
-    {
-      id: "2",
-      droneId: "DRONE-002",
-      status: "idle",
-      battery: 92,
-      load: 0,
-      maxLoad: 5,
-      currentOrder: null,
-      location: "District 3, HCMC",
-      lastUpdated: "5 mins ago",
-    },
-    {
-      id: "3",
-      droneId: "DRONE-003",
-      status: "maintenance",
-      battery: 45,
-      load: 0,
-      maxLoad: 5,
-      currentOrder: null,
-      location: "Maintenance Center",
-      lastUpdated: "1 hour ago",
-    },
-  ];
-
-  const displayDrones = filtered.length ? filtered : sample;
+  const displayDrones = filtered;
 
   return (
     <div className="space-y-6">
@@ -320,13 +287,13 @@ export default function DronesPage() {
               const statusCfg = statusConfig[drone.status] || statusConfig.idle;
               const Icon = statusCfg.icon;
               const batteryColor =
-                drone.battery >= 70
+                drone.batteryLevel >= 70
                   ? "bg-green-500"
-                  : drone.battery >= 30
+                  : drone.batteryLevel >= 30
                   ? "bg-yellow-500"
                   : "bg-red-500";
               const loadPercentage =
-                ((drone.load ?? 0) / (drone.maxLoad || 1)) * 100;
+                ((drone.currentLoad ?? 0) / (drone.capacity || 1)) * 100;
 
               return (
                 <div
@@ -344,7 +311,7 @@ export default function DronesPage() {
                         </div>
                         <div>
                           <h3 className="text-white font-bold text-lg">
-                            {drone.droneId}
+                            {drone.name || drone.code}
                           </h3>
                           <span
                             className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold border backdrop-blur-sm ${statusCfg.color} ${statusCfg.border}`}
@@ -374,13 +341,13 @@ export default function DronesPage() {
                             Pin
                           </span>
                           <span className="text-sm font-bold text-gray-800">
-                            {drone.battery ?? 0}%
+                            {drone.batteryLevel ?? 0}%
                           </span>
                         </div>
                         <div className="w-full bg-gray-200 rounded-full h-2">
                           <div
                             className={`h-2 rounded-full ${batteryColor} transition-all`}
-                            style={{ width: `${drone.battery ?? 0}%` }}
+                            style={{ width: `${drone.batteryLevel ?? 0}%` }}
                           />
                         </div>
                       </div>
@@ -392,7 +359,7 @@ export default function DronesPage() {
                             Tải
                           </span>
                           <span className="text-sm font-bold text-gray-800">
-                            {drone.load ?? 0}/{drone.maxLoad ?? 0}kg
+                            {drone.currentLoad ?? 0}/{drone.capacity ?? 0}kg
                           </span>
                         </div>
                         <div className="w-full bg-gray-200 rounded-full h-2">
