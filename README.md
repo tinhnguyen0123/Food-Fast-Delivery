@@ -1,4 +1,4 @@
-# Food Fast Delivery (Drone Based)
+# Food Fast Delivery 
 
 Ứng dụng giao đồ ăn sử dụng drone. Hệ thống hỗ trợ 3 vai trò: Khách hàng, Nhà hàng và Admin; gồm quản lý thực đơn, giỏ hàng, đơn hàng, giao hàng bằng drone, theo dõi trạng thái và phân trang sản phẩm.
 
