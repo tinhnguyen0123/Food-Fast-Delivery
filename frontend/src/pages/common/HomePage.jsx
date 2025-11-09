@@ -53,12 +53,11 @@ export default function HomePage() {
 
   // Categories
   const categories = [
-    { emoji: "🍔", name: "Burger", color: "bg-yellow-100 hover:bg-yellow-200" },
-    { emoji: "🍕", name: "Pizza", color: "bg-red-100 hover:bg-red-200" },
-    { emoji: "🍜", name: "Phở", color: "bg-orange-100 hover:bg-orange-200" },
-    { emoji: "🍱", name: "Cơm", color: "bg-green-100 hover:bg-green-200" },
-    { emoji: "🍰", name: "Bánh ngọt", color: "bg-pink-100 hover:bg-pink-200" },
-    { emoji: "☕", name: "Đồ uống", color: "bg-blue-100 hover:bg-blue-200" }
+    { emoji: "🍔", name: "Món chính", color: "bg-yellow-100 hover:bg-yellow-200" },
+    { emoji: "🍕", name: "Món ăn vặt", color: "bg-red-100 hover:bg-red-200" },
+    { emoji: "🍜", name: "Món ăn sáng", color: "bg-orange-100 hover:bg-orange-200" },
+    { emoji: "🍱", name: "Món tráng miệng", color: "bg-green-100 hover:bg-green-200" },
+    { emoji: "☕", name: "Thức uống", color: "bg-blue-100 hover:bg-blue-200" }
   ];
 
   return (
@@ -202,7 +201,7 @@ export default function HomePage() {
               </p>
             </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6">
               {categories.map((cat, index) => (
                 <div
                   key={index}
