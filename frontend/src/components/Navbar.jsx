@@ -176,7 +176,7 @@ export default function Navbar() {
             onClick={() => safeNavigate('/')}
             className={`text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent cursor-pointer hover:scale-105 transition-transform ${isActive('/') ? 'scale-105' : ''}`}
           >
-            🚁 Drone Delivery
+            🚁 Food Fast
           </div>
 
           {/* DESKTOP MENU */}

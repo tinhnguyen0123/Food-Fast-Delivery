@@ -178,7 +178,7 @@ export default function MenuPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Lưu sản phẩm thất bại");
 
-      toast.success(editing ? "✅ Đã cập nhật món" : "✅ Đã thêm món");
+      toast.success(editing ? " Đã cập nhật món" : " Đã thêm món");
       setShowForm(false);
       resetForm();
       loadProducts();
@@ -197,7 +197,7 @@ export default function MenuPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Xóa thất bại");
-      toast.success("🗑️ Đã xóa món");
+      toast.success(" Đã xóa món");
       loadProducts();
     } catch (e) {
       console.error(e);
@@ -222,7 +222,7 @@ export default function MenuPage() {
           x._id === p._id ? { ...x, available: !x.available } : x
         )
       );
-      toast.success(p.available ? "⏸️ Đã tạm ẩn món" : "✅ Đã hiện món");
+      toast.success(p.available ? " Đã tạm ẩn món" : " Đã hiện món");
     } catch (e) {
       console.error(e);
       toast.error(e.message || "Lỗi cập nhật trạng thái");

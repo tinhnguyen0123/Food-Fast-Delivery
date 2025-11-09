@@ -82,7 +82,7 @@ export default function RestaurantsPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Xóa nhà hàng thất bại");
       setRestaurants((prev) => prev.filter((r) => r._id !== id));
-      toast.success("✅ Đã xóa nhà hàng");
+      toast.success(" Đã xóa nhà hàng");
     } catch (e) {
       console.error(e);
       toast.error(e.message || "Lỗi xóa nhà hàng");
