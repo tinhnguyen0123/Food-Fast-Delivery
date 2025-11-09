@@ -1,5 +1,6 @@
 import fs from "fs";
 import ProductRepository from "../repositories/product.repositories.js";
+import RestaurantRepository from "../repositories/restaurant.repositories.js";
 import { uploadToCloudinary, deleteFromCloudinary } from "../utils/cloudinary.js";
 
 class ProductService {
@@ -8,6 +9,12 @@ class ProductService {
     if (!data.name || !data.restaurantId) {
       throw new Error("Tên sản phẩm và ID nhà hàng là bắt buộc");
     }
+
+    // ✅ Kiểm tra trạng thái nhà hàng trước khi tạo sản phẩm
+    const restaurant = await RestaurantRepository.getRestaurantById(data.restaurantId);
+    if (!restaurant) throw new Error("Nhà hàng không tồn tại");
+    if (restaurant.status === "suspended") throw new Error("Nhà hàng đã bị khóa");
+    if (restaurant.status !== "verified") throw new Error("Nhà hàng chưa được duyệt");
 
     try {
       if (file) {
@@ -49,7 +56,6 @@ class ProductService {
 
     try {
       if (file) {
-        // Nếu có ảnh cũ, xóa khỏi Cloudinary
         if (product.imagePublicId) {
           await deleteFromCloudinary(product.imagePublicId);
         }
@@ -75,7 +81,6 @@ class ProductService {
     if (!product) throw new Error("Không thể xóa, sản phẩm không tồn tại");
 
     try {
-      // Nếu có ảnh cũ → xóa khỏi Cloudinary
       if (product.imagePublicId) {
         await deleteFromCloudinary(product.imagePublicId);
       }

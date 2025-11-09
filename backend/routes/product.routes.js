@@ -2,7 +2,7 @@
 import express from "express";
 import multer from "multer";
 import ProductController from "../controllers/product.controllers.js";
-import verifyToken from "../middlewares/auth.js";
+import { verifyToken } from "../middlewares/auth.js";
 
 const productRouter = express.Router();
 const upload = multer({ dest: "uploads/" });

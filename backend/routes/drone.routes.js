@@ -1,6 +1,6 @@
 import express from "express";
 import DroneController from "../controllers/drone.controllers.js";
-import  verifyToken  from "../middlewares/auth.js"; 
+import  { verifyToken }  from "../middlewares/auth.js"; 
 
 const droneRouter = express.Router();
 

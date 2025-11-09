@@ -4,9 +4,10 @@ const userSchema = new mongoose.Schema(
   {
     name: { type: String, required: true },
     email: { type: String, required: true, unique: true },
-    password: { type: String, required: true }, // hashed
+    password: { type: String, required: true }, 
     phone: { type: String, },
     role: { type: String, enum: ["customer", "admin", "restaurant"], default: "customer" },
+  status: { type: String, enum: ["pending", "active", "suspended"], default: "active" },
   },
   { timestamps: true }
 );

@@ -1,12 +1,19 @@
 import DroneRepository from "../repositories/drone.repositories.js";
 import DeliveryRepository from "../repositories/delivery.repositories.js";
 import OrderRepository from "../repositories/order.repositories.js";
+import RestaurantRepository from "../repositories/restaurant.repositories.js";
 
 class DroneService {
   // ✅ Tạo drone mới — yêu cầu có restaurantId
   async createDrone(data) {
     if (!data.code) throw new Error("Thiếu mã drone");
     if (!data.restaurantId) throw new Error("Thiếu restaurantId");
+
+    // ✅ Kiểm tra trạng thái nhà hàng trước khi tạo drone
+    const restaurant = await RestaurantRepository.getRestaurantById(data.restaurantId);
+    if (!restaurant) throw new Error("Nhà hàng không tồn tại");
+    if (restaurant.status === "suspended") throw new Error("Nhà hàng đã bị khóa");
+    if (restaurant.status !== "verified") throw new Error("Nhà hàng chưa được duyệt");
 
     return await DroneRepository.createDrone({
       code: data.code,
@@ -64,14 +71,8 @@ class DroneService {
     if (!drone) throw new Error("Drone không tồn tại");
     if (drone.status !== "idle") throw new Error("Drone không sẵn sàng");
 
-    // --- CHANGED: so sánh ID an toàn, chấp nhận trường hợp order.restaurantId đã được populate
+    // --- So sánh ID an toàn
     const orderRestaurantId = order.restaurantId?._id || order.restaurantId;
-    console.debug("assignDrone debug:", {
-      droneRestaurantId: String(drone.restaurantId),
-      orderRestaurantId: String(orderRestaurantId),
-      drone,
-      order: { _id: order._id, restaurantId: order.restaurantId },
-    });
     if (!orderRestaurantId || String(drone.restaurantId) !== String(orderRestaurantId)) {
       throw new Error("Drone không thuộc nhà hàng của đơn này");
     }

@@ -58,13 +58,48 @@ class RestaurantController {
     }
   }
 
-  // 🟢 Xóa nhà hàng
+  // 🟢 Cập nhật trạng thái nhà hàng
+  async updateStatus(req, res) {
+    try {
+      const { id } = req.params;
+      const { status } = req.body; // "verified" | "suspended" | "pending"
+      const updated = await RestaurantService.updateRestaurant(id, { status });
+      if (!updated) return res.status(404).json({ message: "Không tìm thấy nhà hàng" });
+      return res.status(200).json({ message: "Cập nhật trạng thái thành công", data: updated });
+    } catch (error) {
+      return res.status(400).json({ message: error.message });
+    }
+  }
+
+  // 🔒 Khóa nhà hàng
+  async lock(req, res) {
+    try {
+      const updated = await RestaurantService.updateRestaurant(req.params.id, { status: "suspended" });
+      if (!updated) return res.status(404).json({ message: "Không tìm thấy nhà hàng" });
+      res.status(200).json({ message: "Đã khóa nhà hàng", data: updated });
+    } catch (e) {
+      res.status(400).json({ message: e.message });
+    }
+  }
+
+  // 🔓 Mở khóa nhà hàng
+  async unlock(req, res) {
+    try {
+      const updated = await RestaurantService.updateRestaurant(req.params.id, { status: "verified" });
+      if (!updated) return res.status(404).json({ message: "Không tìm thấy nhà hàng" });
+      res.status(200).json({ message: "Đã mở khóa nhà hàng", data: updated });
+    } catch (e) {
+      res.status(400).json({ message: e.message });
+    }
+  }
+
+  // ✅ Xóa nhà hàng + cascade
   async delete(req, res) {
     try {
-      const deleted = await RestaurantService.deleteRestaurant(req.params.id);
+      const report = await RestaurantService.deleteRestaurant(req.params.id);
       res.status(200).json({
-        message: "Xóa nhà hàng thành công",
-        data: deleted,
+        message: "Đã xóa nhà hàng",
+        report,
       });
     } catch (error) {
       res.status(400).json({ message: error.message });

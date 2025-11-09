@@ -8,6 +8,7 @@ const restaurantSchema = new mongoose.Schema(
     address: String,
     locationId: { type: mongoose.Schema.Types.ObjectId, ref: "Location" },
     image: String,
+    status: { type: String, enum: ["pending", "verified", "suspended"], default: "pending" },
   },
   { timestamps: true }
 );
