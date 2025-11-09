@@ -63,17 +63,8 @@ class CartService {
 
   // Lấy giỏ hàng theo ID
   async getCartById(cartId) {
-    let cart = await CartRepository.getCartById(cartId);
+    const cart = await CartRepository.getCartById(cartId);
     if (!cart) throw new Error("Không tìm thấy giỏ hàng");
-
-    // ✅ Luôn tính lại tổng tiền theo giá sản phẩm hiện tại
-    const totalPrice = await this.calculateTotalPrice(cart);
-    if (Number(cart.totalPrice) !== Number(totalPrice)) {
-      await CartRepository.updateTotalPrice(cartId, totalPrice);
-      // Lấy lại giỏ sau khi cập nhật để trả về dữ liệu đã populate chuẩn
-      cart = await CartRepository.getCartById(cartId);
-    }
-
     return cart;
   }
 

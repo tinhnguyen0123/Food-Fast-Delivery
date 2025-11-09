@@ -5,6 +5,7 @@ import "react-toastify/dist/ReactToastify.css"
 
 // Components
 import Navbar from "./components/Navbar"
+import Footer from './components/Footer';
 import ProtectedRoute from "./components/ProtectedRoute"
 
 // Common pages
@@ -53,13 +54,13 @@ function App() {
     }
   }, [location.pathname, navigate])
 
-  // ✅ Chỉ ẩn Navbar cho các route quản trị
-  const hideNavbar =
+  // ✅ Chỉ ẩn Navbar & Footer cho các route quản trị
+  const hideNavbarAndFooter =
     /^\/restaurant(\/|$)/.test(location.pathname) ||
     location.pathname.startsWith("/admin")
 
   return (
-    <div className="min-h-screen bg-blue-50 text-gray-800">
+    <div className="flex flex-col min-h-screen bg-blue-50 text-gray-800">
       <ToastContainer
         position="top-right"
         autoClose={3000}
@@ -72,9 +73,9 @@ function App() {
       />
 
       {/* ✅ Chỉ hiển thị Navbar cho customer */}
-      {!hideNavbar && <Navbar />}
+      {!hideNavbarAndFooter && <Navbar />}
 
-      <main className="p-6">
+      <main className="flex-1 p-6">
         <Routes>
           {/* 🌐 Public routes (chỉ cho customer chưa đăng nhập) */}
           <Route path="/" element={<HomePage />} />
@@ -170,6 +171,9 @@ function App() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
+
+      {/* ✅ Footer cho tất cả trang customer/public */}
+      {!hideNavbarAndFooter && <Footer />}
     </div>
   )
 }

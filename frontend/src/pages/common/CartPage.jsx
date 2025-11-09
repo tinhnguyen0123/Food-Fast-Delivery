@@ -73,7 +73,8 @@ export default function CartPage() {
           : item
       );
       const newTotal = newItems.reduce(
-        (sum, item) => sum + Number(item.productId.price) * item.quantity,
+        (sum, item) =>
+          sum + Number(item.productId.price) * item.quantity,
         0
       );
       return { ...prevCart, items: newItems, totalPrice: newTotal };
@@ -99,8 +100,10 @@ export default function CartPage() {
       if (!res.ok) throw new Error("Failed to update quantity");
 
       const updatedCart = await res.json();
-      setCart(updatedCart);
+      setCart(updatedCart); // Cập nhật giỏ hàng từ API
+      toast.success("Cập nhật số lượng thành công");
 
+      // 🔹 Hiển thị cảnh báo món bị xóa
       if (updatedCart._sanitized && Array.isArray(updatedCart._removedItems)) {
         updatedCart._removedItems.forEach((name) =>
           toast.warning(
@@ -109,7 +112,7 @@ export default function CartPage() {
         );
       }
     } catch (err) {
-      setCart(previousCart);
+      setCart(previousCart); // Khôi phục giỏ hàng cũ nếu lỗi
       console.error("Update quantity error:", err);
       toast.error(err.message || "Lỗi khi cập nhật số lượng");
     } finally {
