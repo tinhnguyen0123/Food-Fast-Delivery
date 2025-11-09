@@ -1,5 +1,7 @@
 import OrderRepository from "../repositories/order.repositories.js";
 import ProductRepository from "../repositories/product.repositories.js";
+import DeliveryRepository from "../repositories/delivery.repositories.js"; // Thêm import DeliveryRepository
+import DroneRepository from "../repositories/drone.repositories.js"; // Thêm import DroneRepository
 
 class OrderService {
   // 🔹 Chỉnh sửa createOrder để gom nhóm theo nhà hàng
@@ -113,8 +115,22 @@ class OrderService {
   }
 
   async updateOrder(orderId, updateData) {
+    // Lấy thông tin đơn hàng hiện tại trước khi cập nhật
+    const existingOrder = await OrderRepository.getOrderById(orderId);
+    if (!existingOrder) {
+      throw new Error("Không tìm thấy đơn hàng để cập nhật");
+    }
+
     const updated = await OrderRepository.updateOrder(orderId, updateData);
     if (!updated) throw new Error("Cập nhật đơn hàng thất bại");
+
+    // Nếu trạng thái đơn hàng được cập nhật thành 'completed' và có deliveryId
+    if (updateData.status === "completed" && existingOrder.deliveryId) {
+      const delivery = await DeliveryRepository.getDeliveryById(existingOrder.deliveryId);
+      if (delivery && delivery.droneId) {
+        await DroneRepository.updateDrone(delivery.droneId, { status: "idle" });
+      }
+    }
     return updated;
   }
 
