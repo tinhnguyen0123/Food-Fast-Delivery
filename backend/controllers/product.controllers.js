@@ -21,10 +21,22 @@ class ProductController {
     }
   }
 
-  // 📦 Lấy sản phẩm theo nhà hàng
+  // 📦 Lấy sản phẩm theo nhà hàng (DÀNH CHO KHÁCH - PUBLIC)
   async getByRestaurant(req, res) {
     try {
       const products = await ProductService.getProductsByRestaurant(req.params.restaurantId);
+      res.status(200).json(products);
+    } catch (error) {
+      res.status(400).json({ message: error.message });
+    }
+  }
+
+  // 📦 Lấy TẤT CẢ sản phẩm theo nhà hàng (DÀNH CHO CHỦ - PRIVATE)
+  async getMyRestaurantProducts(req, res) {
+    try {
+      const products = await ProductService.getAllProductsByRestaurant(
+        req.params.restaurantId
+      );
       res.status(200).json(products);
     } catch (error) {
       res.status(400).json({ message: error.message });

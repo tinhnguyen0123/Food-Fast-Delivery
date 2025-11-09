@@ -80,7 +80,7 @@ export default function MenuPage() {
         setItems([]);
         return;
       }
-      const res = await fetch(`http://localhost:5000/api/product/restaurant/${rid}`, {
+      const res = await fetch(`http://localhost:5000/api/product/my-restaurant/${rid}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();

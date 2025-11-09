@@ -13,8 +13,13 @@ class ProductRepository {
       .populate("restaurantId", "name address");
   }
 
-  // Lấy tất cả product của 1 nhà hàng
+  // Lấy tất cả product của 1 nhà hàng (dành cho trang khách hàng)
   async getProductsByRestaurant(restaurantId) {
+    return await Product.find({ restaurantId, available: true }).sort({ createdAt: -1 });
+  }
+
+  // 📦 DÀNH CHO CHỦ NHÀ HÀNG (lấy tất cả món)
+  async getAllProductsByRestaurant(restaurantId) {
     return await Product.find({ restaurantId }).sort({ createdAt: -1 });
   }
 

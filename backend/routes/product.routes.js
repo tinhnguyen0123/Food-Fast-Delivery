@@ -19,6 +19,11 @@ productRouter.get("/categories", ProductController.getCategories);
 productRouter.get("/restaurant/:restaurantId/categories", ProductController.getCategoriesByRestaurant);
 
 // 🔍 Lấy sản phẩm
+productRouter.get(
+  "/my-restaurant/:restaurantId",
+  verifyToken, // <-- Yêu cầu xác thực
+  ProductController.getMyRestaurantProducts
+); // dành cho chủ nhà hàng
 productRouter.get("/:id", ProductController.getById);
 productRouter.get("/restaurant/:restaurantId", ProductController.getByRestaurant);
 productRouter.get("/category/:category", ProductController.getByCategory);

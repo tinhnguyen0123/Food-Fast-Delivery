@@ -46,15 +46,21 @@ class ProductService {
     return product;
   }
 
-  // 📦 Lấy sản phẩm theo nhà hàng
+  // 📦 Lấy sản phẩm theo nhà hàng (dành cho khách hàng)
   async getProductsByRestaurant(restaurantId) {
     return await ProductRepository.getProductsByRestaurant(restaurantId);
+  }
+
+  // 📦 Lấy TẤT CẢ sản phẩm theo nhà hàng (DÀNH CHO CHỦ)
+  async getAllProductsByRestaurant(restaurantId) {
+    return await ProductRepository.getAllProductsByRestaurant(restaurantId);
   }
 
   // 🏷️ Lấy sản phẩm theo category (chỉ hiển thị nếu nhà hàng đã verified)
   async getProductsByCategory(category) {
     try {
       const query = !category || category === "all" ? {} : { category };
+      query.available = true; // Chỉ lấy sản phẩm đang bán
       const products = await Product.find(query)
         .sort({ createdAt: -1 })
         .populate({
