@@ -45,6 +45,16 @@ class RestaurantController {
     }
   }
 
+// 🟢 Lấy danh sách public (chỉ verified) cho khách hàng
+  async getPublic(req, res) {
+    try {
+      const restaurants = await RestaurantService.getVerifiedRestaurants();
+      res.status(200).json(restaurants);
+    } catch (error) {
+      res.status(500).json({ message: "Lỗi server", error: error.message });
+    }
+  }
+
   // 🟢 Cập nhật nhà hàng (có thể cập nhật ảnh)
   async update(req, res) {
     try {

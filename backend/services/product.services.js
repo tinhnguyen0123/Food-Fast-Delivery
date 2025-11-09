@@ -1,4 +1,5 @@
 import fs from "fs";
+import Product from "../models/product.models.js"; // ✅ thêm import để truy vấn trực tiếp
 import ProductRepository from "../repositories/product.repositories.js";
 import RestaurantRepository from "../repositories/restaurant.repositories.js";
 import { uploadToCloudinary, deleteFromCloudinary } from "../utils/cloudinary.js";
@@ -44,9 +45,24 @@ class ProductService {
     return await ProductRepository.getProductsByRestaurant(restaurantId);
   }
 
-  // 🏷️ Lấy sản phẩm theo category
+  // 🏷️ Lấy sản phẩm theo category (chỉ hiển thị nếu nhà hàng đã verified)
   async getProductsByCategory(category) {
-    return await ProductRepository.getProductsByCategory(category);
+    try {
+      const query = !category || category === "all" ? {} : { category };
+      const products = await Product.find(query)
+        .sort({ createdAt: -1 })
+        .populate({
+          path: "restaurantId",
+          select: "name address status",
+          match: { status: "verified" },
+        });
+
+      // 🔹 Chỉ giữ sản phẩm thuộc nhà hàng đã verified
+      return products.filter((p) => !!p.restaurantId);
+    } catch (error) {
+      console.error("❌ Lỗi khi lấy sản phẩm theo category:", error);
+      throw new Error("Không thể lấy sản phẩm theo category: " + error.message);
+    }
   }
 
   // ✏️ Cập nhật sản phẩm

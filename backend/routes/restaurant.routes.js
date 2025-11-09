@@ -23,6 +23,9 @@ restaurantRouter.put("/:id/status", verifyToken, ensureAdmin, RestaurantControll
 restaurantRouter.put("/:id/lock", verifyToken, ensureAdmin, RestaurantController.lock);
 restaurantRouter.put("/:id/unlock", verifyToken, ensureAdmin, RestaurantController.unlock);
 
+// 🔹 Danh sách public (only verified) cho khách hàng
+restaurantRouter.get("/public", RestaurantController.getPublic);
+
 // 🔹 Lấy nhà hàng theo ID
 restaurantRouter.get("/:id", RestaurantController.getById);
 

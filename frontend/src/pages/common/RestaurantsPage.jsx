@@ -11,28 +11,27 @@ export default function RestaurantsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const navigate = useNavigate();
 
+  // ✅ Chỉ lấy danh sách nhà hàng public (đã verified, chưa bị khóa)
   useEffect(() => {
-    loadRestaurants();
+    const load = async () => {
+      setLoading(true);
+      try {
+        const res = await fetch(`${API_BASE}/api/restaurant/public`);
+        if (!res.ok) throw new Error("Không thể tải danh sách nhà hàng");
+        const data = await res.json();
+        setRestaurants(Array.isArray(data) ? data : []);
+      } catch (e) {
+        console.error(e);
+        toast.error(e.message || "Lỗi tải nhà hàng");
+        setRestaurants([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
   }, []);
 
-  const loadRestaurants = async () => {
-    setLoading(true);
-    try {
-      const res = await fetch(`${API_BASE}/api/restaurant`);
-      if (!res.ok) {
-        throw new Error("Không thể tải danh sách nhà hàng");
-      }
-      const data = await res.json();
-      setRestaurants(Array.isArray(data) ? data : data.data || []);
-    } catch (e) {
-      console.error(e);
-      toast.error(e.message || "Lỗi tải nhà hàng");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Lọc nhà hàng theo từ khóa tìm kiếm
+  // 🔍 Lọc nhà hàng theo từ khóa tìm kiếm
   const filteredRestaurants = restaurants.filter((r) => {
     const query = searchQuery.toLowerCase().trim();
     return (
@@ -144,7 +143,6 @@ export default function RestaurantsPage() {
                     {r.name}
                   </h3>
 
-                  {/* Address */}
                   {(r.address || r.location?.text) && (
                     <div className="flex items-start gap-2 text-sm text-gray-600 mb-3">
                       <MapPin className="w-4 h-4 mt-0.5 flex-shrink-0 text-gray-400" />
@@ -154,14 +152,12 @@ export default function RestaurantsPage() {
                     </div>
                   )}
 
-                  {/* Description */}
                   {r.description && (
                     <p className="text-sm text-gray-600 mb-4 line-clamp-2">
                       {r.description}
                     </p>
                   )}
 
-                  {/* Footer Info */}
                   <div className="flex items-center justify-between pt-4 border-t border-gray-100">
                     <div className="flex items-center gap-1 text-sm text-gray-500">
                       <Clock className="w-4 h-4" />

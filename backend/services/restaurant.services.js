@@ -34,6 +34,11 @@ class RestaurantService {
     return await RestaurantRepository.getAllRestaurants();
   }
 
+  // 🟢 Lấy nhà hàng public (chỉ verified)
+  async getVerifiedRestaurants() {
+    return await RestaurantRepository.getVerifiedRestaurants();
+  }
+
   // 🟢 Lấy theo chủ sở hữu
   async getRestaurantsByOwner(ownerId) {
     return await RestaurantRepository.getRestaurantsByOwner(ownerId);
