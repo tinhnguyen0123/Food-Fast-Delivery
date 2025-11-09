@@ -10,10 +10,10 @@ export default function CartPage() {
   const [updating, setUpdating] = useState(false);
 
   useEffect(() => {
-    fetchCart();
+    loadCart();
   }, []);
 
-  const fetchCart = async () => {
+  const loadCart = async () => {
     try {
       setLoading(true);
       const token = localStorage.getItem("token");
@@ -100,13 +100,22 @@ export default function CartPage() {
     }
   };
 
+  // ✅ Phiên bản mới của handleRemoveItem
   const handleRemoveItem = async (productId) => {
     const previousCart = { ...cart };
-    const newItems = cart.items.filter(
-      (item) => item.productId._id !== productId
+
+    // an toàn khi so sánh id (productId có thể là object hoặc string)
+    const idOf = (it) =>
+      ((it.productId && (it.productId._id || it.productId)) || "").toString();
+
+    const newItems = (cart.items || []).filter(
+      (item) => idOf(item) !== productId.toString()
     );
     const newTotal = newItems.reduce(
-      (sum, item) => sum + Number(item.productId.price) * item.quantity,
+      (sum, item) =>
+        sum +
+        Number(item.productId.price || item.priceAtOrderTime || 0) *
+          item.quantity,
       0
     );
     setCart({ ...cart, items: newItems, totalPrice: newTotal });
@@ -129,8 +138,9 @@ export default function CartPage() {
 
       if (!res.ok) throw new Error("Failed to remove item");
 
-      const updatedCart = await res.json();
-      setCart(updatedCart);
+      // đảm bảo nhận cart đã populate (image, product.name, restaurant.name)
+      await loadCart();
+
       toast.success("Đã xóa món khỏi giỏ");
     } catch (err) {
       setCart(previousCart);
