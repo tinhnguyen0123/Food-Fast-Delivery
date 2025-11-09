@@ -22,6 +22,12 @@ class DroneRepository {
     return await Drone.find({ status }).populate("currentLocationId").sort({ createdAt: -1 });
   }
 
+  async getDronesByRestaurant(restaurantId) {
+    return await Drone.find({ restaurantId })
+      .populate("currentLocationId")
+      .sort({ createdAt: -1 });
+  }
+
   // Cập nhật drone
   async updateDrone(droneId, updateData) {
     return await Drone.findByIdAndUpdate(droneId, updateData, { new: true });
@@ -30,6 +36,15 @@ class DroneRepository {
   // Xóa drone
   async deleteDrone(droneId) {
     return await Drone.findByIdAndDelete(droneId);
+  }
+
+  // ✅ Gán drone cho đơn hàng → tự động set status = "delivering"
+  async assignDrone(droneId, orderId) {
+    return await Drone.findByIdAndUpdate(
+      droneId,
+      { status: "delivering" },
+      { new: true }
+    );
   }
 }
 

@@ -1,27 +1,31 @@
 import mongoose from "mongoose";
 
-const orderSchema = new mongoose.Schema(
+// 🔹 Schema cho từng item trong đơn hàng, lưu snapshot giá & tên
+const OrderItemSchema = new mongoose.Schema(
+  {
+    productId: { type: mongoose.Schema.Types.ObjectId, ref: "Product", required: true },
+    quantity: { type: Number, required: true, min: 1 },
+    priceAtOrderTime: { type: Number, required: true, min: 0 }, // giá tại thời điểm đặt
+    name: { type: String }, // snapshot tên sản phẩm, tuỳ chọn
+  },
+  { _id: false }
+);
+
+// Schema chính cho Order
+const OrderSchema = new mongoose.Schema(
   {
     userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
     restaurantId: { type: mongoose.Schema.Types.ObjectId, ref: "Restaurant", required: true },
-    items: [
-      {
-        productId: { type: mongoose.Schema.Types.ObjectId, ref: "Product", required: true },
-        quantity: Number,
-        priceAtOrderTime: Number,
-      },
-    ],
+    items: { type: [OrderItemSchema], default: [] },
     status: {
       type: String,
       enum: ["pending", "preparing", "delivering", "completed", "cancelled"],
       default: "pending",
     },
-    totalPrice: Number,
-    paymentMethod: { type: String, enum: ["COD", "VNPAY"] },
+    totalPrice: { type: Number, required: true, min: 0 },
+    paymentMethod: { type: String, enum: ["COD", "VNPAY"], default: "COD" },
     paymentId: { type: mongoose.Schema.Types.ObjectId, ref: "Payment" },
     deliveryId: { type: mongoose.Schema.Types.ObjectId, ref: "Delivery" },
-
-    // ✅ Thêm địa chỉ giao hàng
     shippingAddress: {
       text: String,
       location: {
@@ -33,4 +37,4 @@ const orderSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-export default mongoose.model("Order", orderSchema);
+export default mongoose.model("Order", OrderSchema);

@@ -1,23 +1,42 @@
-import { Navigate } from 'react-router-dom';
+import { Navigate } from "react-router-dom";
 
-export default function ProtectedRoute({ children, requiredRole }) {
-  const token = localStorage.getItem('token');
-  const user = JSON.parse(localStorage.getItem('user') || '{}');
-  
-  // Chưa đăng nhập
-  if (!token) {
+export default function ProtectedRoute({ children, requiredRole, allowedRoles }) {
+  const token = localStorage.getItem("token");
+  let user = null;
+  try {
+    user = JSON.parse(localStorage.getItem("user") || "null");
+  } catch (e) {
+    user = null;
+  }
+
+  // 1. Nếu chưa login → chuyển về login
+  if (!token || !user) {
     return <Navigate to="/login" replace />;
   }
-  
-  // Kiểm tra role nếu cần
+
+  // 2. Nếu yêu cầu role cụ thể (requiredRole)
   if (requiredRole && user.role !== requiredRole) {
-    return (
-      <div className="text-center p-8">
-        <h2 className="text-2xl font-bold text-red-600">Không có quyền truy cập</h2>
-        <p className="text-gray-600 mt-2">Bạn không có quyền truy cập trang này.</p>
-      </div>
-    );
+    // Chuyển về trang tương ứng với role hiện tại
+    if (user.role === 'admin') {
+      return <Navigate to="/admin/orders" replace />;
+    } else if (user.role === 'restaurant') {
+      return <Navigate to="/restaurant/dashboard" replace />;
+    } else {
+      return <Navigate to="/" replace />;
+    }
   }
-  
+
+  // 3. Nếu yêu cầu danh sách role (allowedRoles)
+  if (allowedRoles && !allowedRoles.includes(user.role)) {
+    // Chuyển về trang tương ứng với role hiện tại
+    if (user.role === 'admin') {
+      return <Navigate to="/admin/orders" replace />;
+    } else if (user.role === 'restaurant') {
+      return <Navigate to="/restaurant/dashboard" replace />;
+    } else {
+      return <Navigate to="/" replace />;
+    }
+  }
+
   return children;
 }

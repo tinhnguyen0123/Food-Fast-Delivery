@@ -35,6 +35,7 @@ class UserController {
           phone: user.phone,
           email: user.email,
           role: user.role,
+          status: user.status, // thêm status vào payload nếu cần
         },
       });
     } catch (error) {
@@ -84,11 +85,27 @@ class UserController {
     }
   }
 
-  // 🔹 Xóa user
+  // 🔹 Cập nhật trạng thái user
+  async updateStatus(req, res) {
+    try {
+      const { id } = req.params;
+      const { status } = req.body; // "active" | "pending" | "suspended"
+      const updated = await UserService.updateUser(id, { status });
+      if (!updated) return res.status(404).json({ message: "Không tìm thấy user" });
+      res.status(200).json({ message: "Cập nhật trạng thái thành công", user: updated });
+    } catch (error) {
+      res.status(400).json({ message: error.message });
+    }
+  }
+
+  // ✅ Xóa user + cascade nếu là nhà hàng
   async deleteUser(req, res) {
     try {
-      const deletedUser = await UserService.deleteUser(req.params.id);
-      res.status(200).json({ message: "User deleted successfully", deletedUser });
+      const report = await UserService.deleteUser(req.params.id);
+      res.status(200).json({
+        message: "Đã xóa user",
+        report,
+      });
     } catch (error) {
       res.status(400).json({ message: error.message });
     }
@@ -97,7 +114,6 @@ class UserController {
   // 🔹 Lấy user hiện tại từ token
   async getCurrentUser(req, res) {
     try {
-      // req.user.id được gán từ middleware auth
       const user = await UserService.getUserById(req.user.id);
       if (!user) return res.status(404).json({ message: "User not found" });
       res.status(200).json(user);
@@ -105,7 +121,28 @@ class UserController {
       res.status(500).json({ message: error.message });
     }
   }
+
+  // 🔹 Khóa tài khoản user
+  async lockUser(req, res) {
+    try {
+      const updated = await UserService.updateUser(req.params.id, { status: "suspended" });
+      if (!updated) return res.status(404).json({ message: "Không tìm thấy user" });
+      res.status(200).json({ message: "Đã khóa tài khoản", user: updated });
+    } catch (e) {
+      res.status(400).json({ message: e.message });
+    }
+  }
+
+  // 🔹 Mở khóa tài khoản user
+  async unlockUser(req, res) {
+    try {
+      const updated = await UserService.updateUser(req.params.id, { status: "active" });
+      if (!updated) return res.status(404).json({ message: "Không tìm thấy user" });
+      res.status(200).json({ message: "Đã mở khóa tài khoản", user: updated });
+    } catch (e) {
+      res.status(400).json({ message: e.message });
+    }
+  }
 }
 
 export default new UserController();
-

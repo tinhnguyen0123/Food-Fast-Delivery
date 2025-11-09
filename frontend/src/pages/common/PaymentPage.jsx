@@ -8,32 +8,37 @@ import {
   useMap,
 } from "react-leaflet";
 import L from "leaflet";
-// ✅ THAY ĐỔI QUAN TRỌNG: Import CSS của Leaflet
 import "leaflet/dist/leaflet.css";
-
-// ✅ THAY ĐỔI QUAN TRỌNG: Import trực tiếp các tệp ảnh marker
 import iconRetinaUrl from "leaflet/dist/images/marker-icon-2x.png";
 import iconUrl from "leaflet/dist/images/marker-icon.png";
 import shadowUrl from "leaflet/dist/images/marker-shadow.png";
-
 import { toast } from "react-toastify";
 
-// ✅ THAY ĐỔI QUAN TRỌNG: Cấu hình lại Default Icon với các đường dẫn đã import
-// Một số phiên bản cũ của Leaflet có thể cần dòng này để tránh lỗi
+// Leaflet icon setup
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
-  iconRetinaUrl: iconRetinaUrl,
-  iconUrl: iconUrl,
-  shadowUrl: shadowUrl,
+  iconRetinaUrl,
+  iconUrl,
+  shadowUrl,
 });
 
-// Component để tự động cập nhật vị trí bản đồ
+// Component để cập nhật bản đồ khi position thay đổi
 function MapUpdater({ position }) {
   const map = useMap();
   useEffect(() => {
     map.flyTo([position.lat, position.lng], map.getZoom());
   }, [position, map]);
+  return null;
+}
 
+// Component để handle click trên bản đồ
+function MapClickHandler({ setPosition, reverseGeocode }) {
+  useMapEvents({
+    click(e) {
+      setPosition(e.latlng);
+      reverseGeocode(e.latlng.lat, e.latlng.lng);
+    },
+  });
   return null;
 }
 
@@ -52,6 +57,7 @@ export default function PaymentPage() {
     loadCart();
   }, []);
 
+  // Load giỏ hàng mới nhất
   const loadCart = async () => {
     try {
       const token = localStorage.getItem("token");
@@ -63,26 +69,26 @@ export default function PaymentPage() {
       const res = await fetch("http://localhost:5000/api/cart/latest", {
         headers: { Authorization: `Bearer ${token}` },
       });
-      if (!res.ok) {
-        toast.error("Không thể tải giỏ hàng");
-        navigate("/products");
-        return;
-      }
+      if (!res.ok) throw new Error("Không thể tải giỏ hàng");
       const data = await res.json();
       setCart(data);
-    } catch (err) {
-      console.error(err);
-      toast.error("Lỗi khi tải giỏ hàng");
+
+      // 🔹 Hiển thị cảnh báo món bị loại
+      if (data._sanitized && data._removedItems?.length) {
+        data._removedItems.forEach((n) =>
+          toast.warning(`Món '${n}' đã bị loại khỏi giỏ (nhà hàng bị khóa)`)
+        );
+      }
+    } catch (e) {
+      toast.error(e.message || "Lỗi khi tải giỏ hàng");
     } finally {
       setLoading(false);
     }
   };
 
+  // Tìm địa chỉ OpenStreetMap
   const doSearch = useCallback(async (q) => {
-    if (!q) {
-      setSuggestions([]);
-      return;
-    }
+    if (!q) return setSuggestions([]);
     try {
       const res = await fetch(
         `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
@@ -97,20 +103,12 @@ export default function PaymentPage() {
   }, []);
 
   useEffect(() => {
-    if (query.trim() === "") {
-      setSuggestions([]);
-      return;
-    }
-
-    const timerId = setTimeout(() => {
-      doSearch(query);
-    }, 500);
-
-    return () => {
-      clearTimeout(timerId);
-    };
+    if (!query.trim()) return setSuggestions([]);
+    const timer = setTimeout(() => doSearch(query), 500);
+    return () => clearTimeout(timer);
   }, [query, doSearch]);
 
+  // Reverse geocode từ lat/lng
   async function reverseGeocode(lat, lng) {
     try {
       const res = await fetch(
@@ -121,16 +119,6 @@ export default function PaymentPage() {
     } catch (e) {
       console.error("Reverse geocode error", e);
     }
-  }
-
-  function MapClickHandler() {
-    useMapEvents({
-      click(e) {
-        setPosition(e.latlng);
-        reverseGeocode(e.latlng.lat, e.latlng.lng);
-      },
-    });
-    return null;
   }
 
   const selectSuggestion = (s) => {
@@ -153,14 +141,61 @@ export default function PaymentPage() {
     }
   };
 
-  const handleConfirm = async () => {
-    if (!cart || !cart.items || cart.items.length === 0) {
+  // Nhóm items theo nhà hàng
+  const groupByRestaurant = () => {
+    if (!cart?.items) return [];
+
+    const groups = {};
+    cart.items.forEach((item) => {
+      const product = item.productId;
+      if (!product) return;
+
+      const restaurantId = product?.restaurantId?._id || product?.restaurantId;
+      const restaurantName =
+        product?.restaurantId?.name || "Nhà hàng chưa xác định";
+
+      if (!groups[restaurantId]) {
+        groups[restaurantId] = {
+          restaurantId,
+          restaurantName,
+          items: [],
+          subtotal: 0,
+        };
+      }
+
+      const price = Number(product?.price || 0);
+      const qty = Number(item?.quantity || 0);
+      groups[restaurantId].items.push(item);
+      groups[restaurantId].subtotal += price * qty;
+    });
+
+    return Object.values(groups);
+  };
+
+  // Tạo đơn hàng
+  const handleCreateOrders = async () => {
+    if (!cart?.items?.length) {
       toast.error("Giỏ hàng trống");
       return;
     }
 
-    if (!address || address.trim() === "") {
-      toast.error("Vui lòng chọn địa chỉ giao hàng trên bản đồ");
+    // 🔹 Re-check giỏ hàng trước khi tạo đơn
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch("http://localhost:5000/api/cart/latest", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const latest = await res.json();
+      if (latest._sanitized) {
+        toast.warning(
+          "Giỏ hàng đã được cập nhật do nhà hàng bị khóa. Vui lòng kiểm tra lại."
+        );
+        setCart(latest);
+        return;
+      }
+    } catch (err) {
+      console.error("Error re-check cart:", err);
+      toast.error("Không thể kiểm tra giỏ hàng");
       return;
     }
 
@@ -168,72 +203,61 @@ export default function PaymentPage() {
     try {
       const token = localStorage.getItem("token");
       const user = JSON.parse(localStorage.getItem("user") || "{}");
+      const restaurantGroups = groupByRestaurant();
 
-      const items = cart.items.map((it) => ({
-        productId: it.productId._id || it.productId,
-        quantity: it.quantity,
-        priceAtOrderTime: it.productId.price || it.priceAtOrderTime || 0,
-      }));
+      for (const group of restaurantGroups) {
+        const payload = {
+          userId: user.id || user._id,
+          restaurantId: group.restaurantId,
+          items: group.items.map((it) => ({
+            productId: it.productId._id || it.productId,
+            quantity: it.quantity,
+            priceAtOrderTime: it.productId.price || it.priceAtOrderTime || 0,
+          })),
+          totalPrice: group.subtotal,
+          paymentMethod,
+          shippingAddress: { text: address, location: position },
+        };
 
-      const restaurantId =
-        cart.items[0].productId.restaurantId?._id ||
-        cart.items[0].productId.restaurantId ||
-        null;
-
-      const payload = {
-        userId: user.id || user._id,
-        restaurantId,
-        items,
-        totalPrice: cart.totalPrice,
-        paymentMethod,
-        shippingAddress: {
-          text: address,
-          location: position,
-        },
-      };
-
-      const res = await fetch("http://localhost:5000/api/order", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(payload),
-      });
-
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.message || "Tạo đơn thất bại");
-      }
-
-      const created = await res.json();
-
-      if (paymentMethod === "VNPAY") {
-        const payRes = await fetch(`http://localhost:5000/api/payment`, {
+        const res = await fetch("http://localhost:5000/api/order", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
           },
-          body: JSON.stringify({
-            orderId: created._id,
-            amount: created.totalPrice,
-            method: "VNPAY",
-          }),
+          body: JSON.stringify(payload),
         });
 
-        if (payRes.ok) {
-          const payData = await payRes.json();
-          if (payData.paymentUrl) {
-            window.location.href = payData.paymentUrl;
-            return;
+        if (!res.ok) throw new Error("Tạo đơn thất bại");
+        const created = await res.json();
+
+        if (paymentMethod === "VNPAY") {
+          const payRes = await fetch(`http://localhost:5000/api/payment`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+              orderId: created._id,
+              amount: created.totalPrice,
+              method: "VNPAY",
+            }),
+          });
+
+          if (payRes.ok) {
+            const payData = await payRes.json();
+            if (payData.paymentUrl) {
+              window.location.href = payData.paymentUrl;
+              return;
+            }
           }
         }
       }
 
       await clearCartOnServer(cart._id);
       toast.success("Tạo đơn thành công");
-      navigate(`/orders/${created._id}`);
+      navigate("/orders");
     } catch (err) {
       console.error("Create order error:", err);
       toast.error(err.message || "Lỗi khi tạo đơn");
@@ -246,115 +270,152 @@ export default function PaymentPage() {
     return (
       <div className="text-center py-12">
         <div className="animate-spin h-8 w-8 border-4 border-blue-600 border-t-transparent rounded-full mx-auto" />
-        <p className="mt-3">Đang tải...</p>
+        <p className="mt-3 text-gray-600">Đang tải...</p>
       </div>
     );
   }
 
+  const restaurantGroups = groupByRestaurant();
+  const total = cart?.totalPrice
+    ? cart.totalPrice
+    : restaurantGroups.reduce((sum, g) => sum + g.subtotal, 0);
+
   return (
-    <div className="max-w-4xl mx-auto p-4">
-      <h2 className="text-2xl font-bold mb-4">Thanh toán</h2>
+    <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-6 p-4">
+      {/* Cột trái: Địa chỉ & Bản đồ */}
+      <div className="space-y-6">
+        <div className="bg-white p-6 rounded-lg shadow">
+          <h2 className="text-2xl font-bold mb-4">Địa chỉ giao hàng</h2>
 
-      <div className="bg-white p-4 rounded shadow mb-6">
-        <h3 className="font-semibold mb-2">Địa chỉ giao hàng</h3>
-        <input
-          className="border p-2 w-full mb-2 rounded"
-          placeholder="Tìm địa chỉ..."
-          value={query}
-          onChange={(e) => {
-            setQuery(e.target.value);
-          }}
-        />
-        {suggestions.length > 0 && (
-          <div className="bg-white border rounded max-h-40 overflow-auto mb-2">
-            {suggestions.map((s) => (
-              <div
-                key={s.place_id}
-                className="p-2 hover:bg-gray-100 cursor-pointer text-sm"
-                onClick={() => selectSuggestion(s)}
-              >
-                {s.display_name}
-              </div>
-            ))}
+          <input
+            className="border p-3 w-full mb-3 rounded-lg"
+            placeholder="Tìm địa chỉ..."
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
+
+          {suggestions.length > 0 && (
+            <div className="bg-white border rounded-lg max-h-40 overflow-auto mb-3">
+              {suggestions.map((s) => (
+                <div
+                  key={s.place_id}
+                  className="p-3 hover:bg-gray-100 cursor-pointer text-sm border-b last:border-0"
+                  onClick={() => selectSuggestion(s)}
+                >
+                  {s.display_name}
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div className="h-64 mb-3 relative z-0 rounded-lg overflow-hidden">
+            <MapContainer
+              center={[position.lat, position.lng]}
+              zoom={13}
+              style={{ height: "100%", width: "100%" }}
+            >
+              <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+              <Marker position={[position.lat, position.lng]} />
+              <MapClickHandler setPosition={setPosition} reverseGeocode={reverseGeocode} />
+              <MapUpdater position={position} />
+            </MapContainer>
           </div>
-        )}
 
-        <div className="h-64 mb-3 relative z-0">
-          <MapContainer
-            center={[position.lat, position.lng]}
-            zoom={13}
-            style={{ height: "100%", width: "100%" }}
-          >
-            <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-            <Marker position={[position.lat, position.lng]} />
-            <MapClickHandler />
-            <MapUpdater position={position} />
-          </MapContainer>
+          <textarea
+            readOnly
+            value={address}
+            placeholder="Địa chỉ sẽ hiển thị ở đây..."
+            className="border p-3 w-full rounded-lg h-20 resize-none"
+          />
         </div>
 
-        <textarea
-          readOnly
-          value={address}
-          className="border p-2 w-full rounded h-20 mb-3"
-        />
+        <div className="bg-white p-6 rounded-lg shadow">
+          <h3 className="font-semibold mb-3">Phương thức thanh toán</h3>
+          <select
+            value={paymentMethod}
+            onChange={(e) => setPaymentMethod(e.target.value)}
+            className="border p-3 rounded-lg w-full"
+          >
+            <option value="COD">💵 Thanh toán khi nhận (COD)</option>
+            <option value="VNPAY">💳 VNPAY (online)</option>
+          </select>
+        </div>
+      </div>
 
-        <h3 className="font-semibold mb-2">Phương thức thanh toán</h3>
-        <select
-          value={paymentMethod}
-          onChange={(e) => setPaymentMethod(e.target.value)}
-          className="border p-2 rounded w-full mb-4"
-        >
-          <option value="COD">Thanh toán khi nhận (COD)</option>
-          <option value="VNPAY">VNPAY (online)</option>
-        </select>
+      {/* Cột phải: Tóm tắt đơn hàng */}
+      <div className="bg-white p-6 rounded-lg shadow h-fit sticky top-6">
+        <h3 className="text-xl font-bold mb-4">Tóm tắt đơn hàng</h3>
 
-        <div className="mb-4">
-          <h4 className="font-semibold">Tóm tắt đơn</h4>
-          {cart?.items?.map((it) => (
-            <div
-              key={it.productId._id || it.productId}
-              className="flex justify-between py-2 border-b"
-            >
-              <div>
-                <div className="font-medium">
-                  {it.productId.name || it.productId}
-                </div>
-                <div className="text-sm text-gray-500">
-                  Số lượng: {it.quantity}
+        <div className="space-y-4 mb-6 max-h-96 overflow-y-auto">
+          {restaurantGroups.length === 0 && (
+            <p className="text-gray-500 text-center py-4">Giỏ hàng trống.</p>
+          )}
+
+          {restaurantGroups.map((group) => (
+            <div key={group.restaurantId} className="border rounded-lg p-4">
+              <div className="flex items-center gap-2 mb-3 pb-2 border-b">
+                <span className="text-lg">🏪</span>
+                <div>
+                  <h4 className="font-semibold text-base">{group.restaurantName}</h4>
+                  <p className="text-xs text-gray-500">{group.items.length} món</p>
                 </div>
               </div>
-              <div className="font-bold text-green-600">
-                {(
-                  it.productId.price * it.quantity ||
-                  it.priceAtOrderTime * it.quantity ||
-                  0
-                ).toLocaleString("vi-VN")}
-                ₫
+
+              <div className="space-y-2">
+                {group.items.map((it, idx) => {
+                  const product = it.productId;
+                  const productName = product?.name || "Món ăn";
+                  const productPrice = Number(product?.price || 0);
+                  const quantity = Number(it?.quantity || 0);
+
+                  return (
+                    <div
+                      key={product?._id || `${group.restaurantId}-${idx}`}
+                      className="flex justify-between items-start text-sm"
+                    >
+                      <div className="flex-1">
+                        <div className="font-medium">{productName}</div>
+                        <div className="text-gray-500 text-xs">
+                          {productPrice.toLocaleString("vi-VN")}₫ × {quantity}
+                        </div>
+                      </div>
+                      <div className="font-semibold text-green-600">
+                        {(productPrice * quantity).toLocaleString("vi-VN")}₫
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="flex justify-between mt-3 pt-2 border-t text-sm">
+                <span className="text-gray-600">Tạm tính</span>
+                <span className="font-semibold">{group.subtotal.toLocaleString("vi-VN")}₫</span>
               </div>
             </div>
           ))}
-          <div className="flex justify-between mt-3 font-bold">
-            <div>Tổng</div>
-            <div className="text-xl text-green-600">
-              {(cart?.totalPrice || 0).toLocaleString("vi-VN")}₫
-            </div>
-          </div>
         </div>
 
-        <div className="flex gap-3">
-          <button
-            onClick={() => navigate("/cart")}
-            className="flex-1 bg-gray-200 py-2 rounded"
-          >
-            Quay lại giỏ
-          </button>
-          <button
-            disabled={creating}
-            onClick={handleConfirm}
-            className="flex-1 bg-blue-600 text-white py-2 rounded hover:bg-blue-700"
-          >
-            {creating ? "Đang xử lý..." : "Xác nhận và đặt hàng"}
-          </button>
+        <div className="border-t pt-4">
+          <div className="flex justify-between mb-4 text-lg">
+            <span className="font-bold">Tổng cộng</span>
+            <span className="text-2xl font-bold text-green-600">{total.toLocaleString("vi-VN")}₫</span>
+          </div>
+
+          <div className="flex gap-3">
+            <button
+              onClick={() => navigate("/cart")}
+              className="flex-1 bg-gray-200 py-3 rounded-lg hover:bg-gray-300 transition font-semibold"
+            >
+              ← Quay lại
+            </button>
+            <button
+              disabled={creating}
+              onClick={handleCreateOrders}
+              className="flex-1 bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition font-semibold disabled:opacity-50"
+            >
+              {creating ? "Đang xử lý..." : "Xác nhận"}
+            </button>
+          </div>
         </div>
       </div>
     </div>

@@ -1,7 +1,8 @@
 // middlewares/auth.js
 import jwt from "jsonwebtoken";
 
-const verifyToken = (req, res, next) => {
+// ✅ Middleware xác thực token
+export const verifyToken = (req, res, next) => {
   try {
     let token = null;
 
@@ -23,14 +24,38 @@ const verifyToken = (req, res, next) => {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
     // 5️⃣ Gắn thông tin user vào req để controller dùng
-    req.user = { id: decoded.id, role: decoded.role };
+    // ✅ Thêm luôn status nếu có trong payload
+    req.user = {
+      id: decoded.id,
+      role: decoded.role,
+      status: decoded.status || "active", // mặc định active nếu JWT chưa có
+    };
 
     // 6️⃣ Chuyển sang controller
-    return next();
+    next();
   } catch (error) {
     console.error("Token verification failed:", error.message);
     return res.status(401).json({ message: "Invalid or expired token." });
   }
 };
 
-export default verifyToken;
+// ✅ Middleware kiểm tra quyền Admin
+export const ensureAdmin = (req, res, next) => {
+  try {
+    if (!req.user || req.user.role !== "admin") {
+      return res.status(403).json({ message: "Admin only" });
+    }
+    next();
+  } catch (e) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+};
+
+// ✅ Middleware kiểm tra tài khoản chưa bị khóa
+export const ensureNotSuspended = (req, res, next) => {
+  if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+  if (req.user.status === "suspended") {
+    return res.status(403).json({ message: "Tài khoản đã bị khóa" });
+  }
+  next();
+};

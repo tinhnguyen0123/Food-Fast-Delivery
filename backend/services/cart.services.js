@@ -25,7 +25,6 @@ class CartService {
 
     // Tính tổng tiền dựa trên dữ liệu đã populate
     const totalPrice = populatedCart.items.reduce((sum, item) => {
-      // item.productId lúc này là một object đầy đủ, không phải chỉ là ID
       if (item.productId && item.productId.price) {
         return sum + item.productId.price * item.quantity;
       }
@@ -40,14 +39,13 @@ class CartService {
     const product = await Product.findById(productId);
     if (!product) throw new Error("Sản phẩm không tồn tại");
 
-    // addItem bây giờ sẽ tự xử lý cả việc xóa nếu quantity <= 0
     let cart = await CartRepository.addItem(cartId, productId, quantity);
 
     // Tính lại tổng tiền
     const totalPrice = await this.calculateTotalPrice(cart);
     await CartRepository.updateTotalPrice(cartId, totalPrice);
-    
-    // << SỬA Ở ĐÂY: Trả về giỏ hàng đã được populate đầy đủ
+
+    // Trả về giỏ hàng đã được populate đầy đủ
     return this.getCartById(cartId);
   }
 
@@ -59,7 +57,7 @@ class CartService {
     const totalPrice = await this.calculateTotalPrice(cart);
     await CartRepository.updateTotalPrice(cartId, totalPrice);
 
-    // << SỬA Ở ĐÂY: Trả về giỏ hàng đã được populate đầy đủ
+    // Trả về giỏ hàng đã được populate đầy đủ
     return this.getCartById(cartId);
   }
 

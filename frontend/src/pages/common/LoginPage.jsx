@@ -1,21 +1,14 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
+import { Mail, Lock, ArrowRight, Eye, EyeOff } from 'lucide-react';
 
 export default function LoginPage() {
   const navigate = useNavigate();
-  const [formData, setFormData] = useState({
-    email: '',
-    password: ''
-  });
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-
-  const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    });
-  };
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -24,95 +17,153 @@ export default function LoginPage() {
     try {
       const response = await fetch('http://localhost:5000/api/user/login', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(formData)
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
       });
 
       const data = await response.json();
 
       if (response.ok) {
-        toast.success(data.message || 'Đăng nhập thành công!', {
-          position: "top-right",
-          autoClose: 2000,
-        });
-        
         localStorage.setItem('token', data.token);
         localStorage.setItem('user', JSON.stringify(data.user));
         
-        setTimeout(() => {
-          window.location.href = '/';
-        }, 1500);
+        toast.success(`Chào mừng ${data.user.name}!`);
+
+        // ✅ Điều hướng theo role
+        const user = data.user;
+        if (user.role === 'admin') {
+          navigate('/admin/orders', { replace: true });
+        } else if (user.role === 'restaurant') {
+          navigate('/restaurant/dashboard', { replace: true });
+        } else {
+          navigate('/', { replace: true });
+        }
       } else {
-        toast.error(data.message || 'Đăng nhập thất bại!', {
-          position: "top-right",
-          autoClose: 3000,
-        });
+        toast.error(data.message || 'Đăng nhập thất bại!');
       }
-    } catch (error) {
-      // ❌ Lỗi kết nối
-      toast.error('Không thể kết nối đến server!', {
-        position: "top-right",
-        autoClose: 3000,
-      });
-      console.error('Login error:', error);
+    } catch (err) {
+      console.error('login error:', err);
+      toast.error(err.message || 'Không thể đăng nhập!');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="flex flex-col items-center">
-      <h2 className="text-2xl font-semibold mb-4 text-blue-600">Đăng nhập</h2>
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 flex items-center justify-center p-4">
+      <div className="w-full max-w-md">
+        {/* Logo & Header */}
+        <div className="text-center mb-8">
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl mb-4 shadow-lg">
+            <span className="text-3xl">🍔</span>
+          </div>
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-2">
+            Chào mừng trở lại
+          </h1>
+          <p className="text-gray-600">Đăng nhập để tiếp tục</p>
+        </div>
 
-      <form onSubmit={handleSubmit} className="bg-white p-6 rounded-lg shadow-md w-80">
-        <input 
-          className="border p-2 w-full mb-3 rounded focus:outline-none focus:ring-2 focus:ring-blue-500" 
-          placeholder="Email"
-          type="email"
-          name="email"
-          value={formData.email}
-          onChange={handleChange}
-          required
-        />
-        <input 
-          type="password" 
-          className="border p-2 w-full mb-3 rounded focus:outline-none focus:ring-2 focus:ring-blue-500" 
-          placeholder="Mật khẩu"
-          name="password"
-          value={formData.password}
-          onChange={handleChange}
-          required
-        />
-        <button 
-          type="submit"
-          disabled={loading}
-          className="bg-blue-600 text-white py-2 w-full rounded hover:bg-blue-700 transition disabled:bg-gray-400 disabled:cursor-not-allowed"
-        >
-          {loading ? (
-            <span className="flex items-center justify-center gap-2">
-              <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-              </svg>
-              Đang đăng nhập...
-            </span>
-          ) : (
-            'Đăng nhập'
-          )}
-        </button>
-      </form>
+        {/* Form Card */}
+        <div className="bg-white rounded-2xl shadow-xl p-8">
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Email Input */}
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Email
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <Mail className="h-5 w-5 text-gray-400" />
+                </div>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                  placeholder="email@example.com"
+                  required
+                />
+              </div>
+            </div>
 
-      <p className="mt-4 text-gray-600">
-        Chưa có tài khoản?{' '}
-        <button 
-          onClick={() => navigate('/register')}
-          className="text-blue-600 hover:underline font-semibold"
-        >
-          Đăng ký ngay
-        </button>
-      </p>
+            {/* Password Input */}
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Mật khẩu
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <Lock className="h-5 w-5 text-gray-400" />
+                </div>
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="block w-full pl-10 pr-12 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                  placeholder="••••••••"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                >
+                  {showPassword ? (
+                    <EyeOff className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                  ) : (
+                    <Eye className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {/* Submit Button */}
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 rounded-xl font-semibold hover:shadow-lg transition-all duration-200 flex items-center justify-center gap-2 group disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {loading ? (
+                <>
+                  <div className="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full" />
+                  <span>Đang đăng nhập...</span>
+                </>
+              ) : (
+                <>
+                  <span>Đăng nhập</span>
+                  <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                </>
+              )}
+            </button>
+          </form>
+
+          {/* Register Link */}
+          <div className="text-center mt-6">
+            <p className="text-gray-600">
+              Chưa có tài khoản?{' '}
+              <button
+                onClick={() => navigate('/register')}
+                className="text-blue-600 hover:text-blue-700 font-semibold hover:underline"
+              >
+                Đăng ký ngay
+              </button>
+            </p>
+          </div>
+
+          {/* Restaurant Register Link */}
+          <div className="text-center mt-4 p-4 bg-white rounded-xl shadow">
+            <p className="text-sm text-gray-600 mb-2">
+              Bạn là chủ nhà hàng?
+            </p>
+            <button
+              onClick={() => navigate('/register-restaurant')}
+              className="text-purple-600 hover:text-purple-700 font-semibold text-sm hover:underline"
+            >
+              🏪 Đăng ký nhà hàng
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

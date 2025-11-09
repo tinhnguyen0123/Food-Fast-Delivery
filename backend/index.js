@@ -14,13 +14,38 @@ import paymentRouter from "./routes/payment.routes.js";
 import deliveryRouter from "./routes/delivery.routes.js";
 import droneRouter from "./routes/drone.routes.js";
 import locationRouter from "./routes/location.routes.js";
-
 import cors from "cors";
+
 const app = express();
 const PORT = process.env.PORT || 5000;
-app.use(cors({ origin: "http://localhost:5173", credentials: true }));
+
+// ✅ Cấu hình CORS động cho nhiều frontend (5173, 5174, 5175)
+const FRONTEND_ORIGINS = (
+  process.env.FRONTEND_ORIGINS ||
+  "http://localhost:5173,http://localhost:5174,http://localhost:5175"
+).split(",");
+
+app.use(
+  cors({
+    origin: function (origin, callback) {
+      // Cho phép các request không có origin (ví dụ: Postman, cURL)
+      if (!origin) return callback(null, true);
+
+      if (FRONTEND_ORIGINS.indexOf(origin) !== -1) {
+        return callback(null, true);
+      }
+
+      console.warn(`❌ CORS blocked request from origin: ${origin}`);
+      return callback(new Error("CORS policy: Origin not allowed"), false);
+    },
+    credentials: true,
+  })
+);
+
 app.use(express.json());
 app.use(cookieParser());
+
+// ✅ Các route API
 app.use("/api/auth", authRouter);
 app.use("/api/user", userRouter);
 app.use("/api/restaurant", restaurantRouter);
@@ -33,6 +58,7 @@ app.use("/api/delivery", deliveryRouter);
 app.use("/api/drone", droneRouter);
 app.use("/api/location", locationRouter);
 
+// ✅ Route kiểm tra server
 app.get("/api/health", (req, res) => {
   res.status(200).json({
     status: "ok",
@@ -40,8 +66,8 @@ app.get("/api/health", (req, res) => {
   });
 });
 
-
+// ✅ Khởi động server
 app.listen(PORT, () => {
   connectDB();
-  console.log(`Server is running on port ${PORT}`);
+  console.log(`🚀 Server is running on port ${PORT}`);
 });

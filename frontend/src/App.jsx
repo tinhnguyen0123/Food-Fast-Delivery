@@ -1,119 +1,181 @@
-import { Routes, Route, useLocation } from "react-router-dom";  
-import { ToastContainer } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
-import Navbar from "./components/Navbar"; 
-import HomePage from "./pages/common/HomePage";
-import LoginPage from "./pages/common/LoginPage";
-import RegisterPage from "./pages/common/RegisterPage";
-import ProfilePage from "./pages/ProfilePage";
-import ProtectedRoute from "./components/ProtectedRoute";
-import ProductsPage from "./pages/common/ProductsPage";
-import CartPage from "./pages/common/CartPage";
-import CheckoutPage from "./pages/common/CheckoutPage";
-import OrdersPage from "./pages/common/OrdersPage";
-import OrderDetailPage from "./pages/common/OrderDetailPage";
-import PaymentPage from "./pages/common/PaymentPage";
-import RestaurantDashboard from "./pages/restaurant/RestaurantDashboard.jsx";
-import RestaurantRegisterPage from "./pages/restaurant/RestaurantRegisterPage.jsx";
+import { useEffect } from "react"
+import { Routes, Route, useLocation, useNavigate, Navigate } from "react-router-dom"
+import { ToastContainer } from "react-toastify"
+import "react-toastify/dist/ReactToastify.css"
+
+// Components
+import Navbar from "./components/Navbar"
+import Footer from './components/Footer';
+import ProtectedRoute from "./components/ProtectedRoute"
+
+// Common pages
+import HomePage from "./pages/common/HomePage"
+import LoginPage from "./pages/common/LoginPage"
+import RegisterPage from "./pages/common/RegisterPage"
+import ProfilePage from "./pages/common/ProfilePage"
+import ProductsPage from "./pages/common/ProductsPage"
+import CartPage from "./pages/common/CartPage"
+import OrdersPage from "./pages/common/OrdersPage"
+import OrderDetailPage from "./pages/common/OrderDetailPage"
+import PaymentPage from "./pages/common/PaymentPage"
+import RestaurantsPage from "./pages/common/RestaurantsPage"
+
+// Restaurant pages
+import RestaurantDashboard from "./pages/restaurant/RestaurantDashboard.jsx"
+import RestaurantRegisterPage from "./pages/restaurant/RestaurantRegisterPage.jsx"
+
+// Admin pages
+import AdminDashboard from "./pages/admin/AdminDashboard.jsx"
+import ManagementOrders from "./pages/admin/ManagementOrders"
+import ManagementUsers from "./pages/admin/ManagementUsers"
+import ManagementRestaurants from "./pages/admin/ManagementRestaurants"
+import ManagementDrones from "./pages/admin/ManagementDrones"
+import AnalyticsPage from "./pages/admin/AnalyticsPageAd"
 
 function App() {
-  const location = useLocation();
-  const hideNavbar = location.pathname.startsWith("/restaurant");
+  const navigate = useNavigate()
+  const location = useLocation()
+
+  // ✅ Tự động điều hướng theo role khi vào trang chủ
+  useEffect(() => {
+    if (location.pathname === "/") {
+      const user = JSON.parse(localStorage.getItem("user") || "null");
+      const token = localStorage.getItem("token");
+
+      if (token && user) {
+        // Điều hướng theo role
+        if (user.role === "admin") {
+          navigate("/admin/orders", { replace: true });
+        } else if (user.role === "restaurant") {
+          navigate("/restaurant/dashboard", { replace: true });
+        }
+        // Customer thì ở lại trang chủ
+      }
+    }
+  }, [location.pathname, navigate])
+
+  // ✅ Chỉ ẩn Navbar & Footer cho các route quản trị
+  const hideNavbarAndFooter =
+    /^\/restaurant(\/|$)/.test(location.pathname) ||
+    location.pathname.startsWith("/admin")
 
   return (
-    <div className="min-h-screen bg-blue-50 text-gray-800">
+    <div className="flex flex-col min-h-screen bg-blue-50 text-gray-800">
       <ToastContainer
         position="top-right"
         autoClose={3000}
         hideProgressBar={false}
-        newestOnTop={false}
+        newestOnTop
         closeOnClick
-        rtl={false}
-        pauseOnFocusLoss
-        draggable
         pauseOnHover
+        draggable
         theme="light"
       />
 
-      {/* ✅ Chỉ hiển thị Navbar nếu KHÔNG nằm trong khu vực /restaurant */}
-      {!hideNavbar && <Navbar />}
+      {/* ✅ Chỉ hiển thị Navbar cho customer */}
+      {!hideNavbarAndFooter && <Navbar />}
 
-      <main className="p-6">
+      <main className="flex-1 p-6">
         <Routes>
-          {/* Public routes */}
+          {/* 🌐 Public routes (chỉ cho customer chưa đăng nhập) */}
           <Route path="/" element={<HomePage />} />
-          <Route path="/products" element={<ProductsPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
-          <Route path="/register-restaurant" element={<RestaurantRegisterPage />} />  
+          <Route path="/register-restaurant" element={<RestaurantRegisterPage />} />
 
-          {/* Protected routes */}
+          {/* 👤 Customer-only routes */}
+          <Route
+            path="/products"
+            element={
+              <ProtectedRoute allowedRoles={['customer']}>
+                <ProductsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/restaurants"
+            element={
+              <ProtectedRoute allowedRoles={['customer']}>
+                <RestaurantsPage />
+              </ProtectedRoute>
+            }
+          />
           <Route
             path="/profile"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute allowedRoles={['customer']}>
                 <ProfilePage />
               </ProtectedRoute>
             }
           />
+          <Route
+            path="/cart"
+            element={
+              <ProtectedRoute allowedRoles={['customer']}>
+                <CartPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/orders"
+            element={
+              <ProtectedRoute allowedRoles={['customer']}>
+                <OrdersPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/orders/:id"
+            element={
+              <ProtectedRoute allowedRoles={['customer']}>
+                <OrderDetailPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/payment"
+            element={
+              <ProtectedRoute allowedRoles={['customer']}>
+                <PaymentPage />
+              </ProtectedRoute>
+            }
+          />
 
+          {/* 🍽️ Restaurant dashboard (chỉ cho restaurant) */}
           <Route
             path="/restaurant/dashboard"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute requiredRole="restaurant">
                 <RestaurantDashboard />
               </ProtectedRoute>
             }
           />
 
+          {/* 👑 Admin dashboard (chỉ cho admin) */}
           <Route
-            path="/orders/new"
+            path="/admin/*"
             element={
-              <ProtectedRoute>
-                <CheckoutPage />
+              <ProtectedRoute requiredRole="admin">
+                <AdminDashboard />
               </ProtectedRoute>
             }
-          />
+          >
+            <Route path="orders" element={<ManagementOrders />} />
+            <Route path="users" element={<ManagementUsers />} />
+            <Route path="restaurants" element={<ManagementRestaurants />} />
+            <Route path="drones" element={<ManagementDrones />} />
+            <Route path="analytics" element={<AnalyticsPage />} />
+          </Route>
 
-          <Route
-            path="/orders"
-            element={
-              <ProtectedRoute>
-                <OrdersPage />
-              </ProtectedRoute>
-            }
-          />
-
-          <Route
-            path="/orders/:id"
-            element={
-              <ProtectedRoute>
-                <OrderDetailPage />
-              </ProtectedRoute>
-            }
-          />
-
-          <Route
-            path="/cart"
-            element={
-              <ProtectedRoute>
-                <CartPage />
-              </ProtectedRoute>
-            }
-          />
-
-          <Route
-            path="/payment"
-            element={
-              <ProtectedRoute>
-                <PaymentPage />
-              </ProtectedRoute>
-            }
-          />
+          {/* 404 - Redirect về trang tương ứng */}
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
+
+      {/* ✅ Footer cho tất cả trang customer/public */}
+      {!hideNavbarAndFooter && <Footer />}
     </div>
-  );
+  )
 }
 
-export default App;
+export default App

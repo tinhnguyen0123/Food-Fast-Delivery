@@ -15,9 +15,10 @@ class CartRepository {
   }
 
   // Lấy giỏ hàng theo ID
-  async getCartById(cartId) {
+ async getCartById(cartId) {
     return await Cart.findById(cartId)
-      .populate("items.productId", "name price image");
+      .populate("items.productId", "name price image restaurantId")
+      .populate("items.productId.restaurantId", "name address");
   }
 
   // Thêm sản phẩm vào giỏ hàng

@@ -24,6 +24,14 @@ class RestaurantRepository {
     return await Restaurant.find({ ownerId }).populate("locationId").sort({ createdAt: -1 });
   }
 
+// Lấy nhà hàng đã xác minh (public)
+  async getVerifiedRestaurants() {
+    return await Restaurant.find({ status: "verified" })
+      .populate("ownerId", "name email")
+      .populate("locationId")
+      .sort({ createdAt: -1 });
+  }
+
   // Cập nhật nhà hàng
   async updateRestaurant(restaurantId, updateData) {
     return await Restaurant.findByIdAndUpdate(restaurantId, updateData, { new: true });

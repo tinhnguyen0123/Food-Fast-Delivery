@@ -1,5 +1,7 @@
 import fs from "fs";
+import Product from "../models/product.models.js"; // ✅ truy vấn trực tiếp nếu cần
 import ProductRepository from "../repositories/product.repositories.js";
+import RestaurantRepository from "../repositories/restaurant.repositories.js";
 import { uploadToCloudinary, deleteFromCloudinary } from "../utils/cloudinary.js";
 
 class ProductService {
@@ -9,12 +11,24 @@ class ProductService {
       throw new Error("Tên sản phẩm và ID nhà hàng là bắt buộc");
     }
 
+    // ✅ Kiểm tra trạng thái nhà hàng trước khi tạo sản phẩm
+    const restaurant = await RestaurantRepository.getRestaurantById(data.restaurantId);
+    if (!restaurant) throw new Error("Nhà hàng không tồn tại");
+    if (restaurant.status === "suspended") throw new Error("Nhà hàng đã bị khóa");
+    if (restaurant.status !== "verified") throw new Error("Nhà hàng chưa được duyệt");
+
+    // 🔹 Kiểm tra category hợp lệ
+    const allowed = Product.schema.path("category")?.options?.enum || [];
+    if (!data.category || !allowed.includes(data.category)) {
+      data.category = allowed[0]; // mặc định category đầu tiên
+    }
+
     try {
       if (file) {
         const uploadResult = await uploadToCloudinary(file.path, "products");
         data.image = uploadResult.url;
         data.imagePublicId = uploadResult.public_id;
-        fs.unlinkSync(file.path); // Xóa file tạm sau khi upload
+        fs.unlinkSync(file.path);
       }
 
       const product = await ProductRepository.createProduct(data);
@@ -32,14 +46,35 @@ class ProductService {
     return product;
   }
 
-  // 📦 Lấy sản phẩm theo nhà hàng
+  // 📦 Lấy sản phẩm theo nhà hàng (dành cho khách hàng)
   async getProductsByRestaurant(restaurantId) {
     return await ProductRepository.getProductsByRestaurant(restaurantId);
   }
 
-  // 🏷️ Lấy sản phẩm theo category
+  // 📦 Lấy TẤT CẢ sản phẩm theo nhà hàng (DÀNH CHO CHỦ)
+  async getAllProductsByRestaurant(restaurantId) {
+    return await ProductRepository.getAllProductsByRestaurant(restaurantId);
+  }
+
+  // 🏷️ Lấy sản phẩm theo category (chỉ hiển thị nếu nhà hàng đã verified)
   async getProductsByCategory(category) {
-    return await ProductRepository.getProductsByCategory(category);
+    try {
+      const query = !category || category === "all" ? {} : { category };
+      query.available = true; // Chỉ lấy sản phẩm đang bán
+      const products = await Product.find(query)
+        .sort({ createdAt: -1 })
+        .populate({
+          path: "restaurantId",
+          select: "name address status",
+          match: { status: "verified" },
+        });
+
+      // 🔹 Chỉ giữ sản phẩm thuộc nhà hàng đã verified
+      return products.filter((p) => !!p.restaurantId);
+    } catch (error) {
+      console.error("❌ Lỗi khi lấy sản phẩm theo category:", error);
+      throw new Error("Không thể lấy sản phẩm theo category: " + error.message);
+    }
   }
 
   // ✏️ Cập nhật sản phẩm
@@ -47,9 +82,16 @@ class ProductService {
     const product = await ProductRepository.getProductById(id);
     if (!product) throw new Error("Không tìm thấy sản phẩm để cập nhật");
 
+    // 🔹 Kiểm tra category hợp lệ khi cập nhật
+    if (data?.category) {
+      const allowed = Product.schema.path("category")?.options?.enum || [];
+      if (!allowed.includes(data.category)) {
+        throw new Error("Danh mục không hợp lệ");
+      }
+    }
+
     try {
       if (file) {
-        // Nếu có ảnh cũ, xóa khỏi Cloudinary
         if (product.imagePublicId) {
           await deleteFromCloudinary(product.imagePublicId);
         }
@@ -75,7 +117,6 @@ class ProductService {
     if (!product) throw new Error("Không thể xóa, sản phẩm không tồn tại");
 
     try {
-      // Nếu có ảnh cũ → xóa khỏi Cloudinary
       if (product.imagePublicId) {
         await deleteFromCloudinary(product.imagePublicId);
       }
@@ -87,6 +128,18 @@ class ProductService {
       console.error("❌ Lỗi khi xóa sản phẩm:", error);
       throw new Error("Xóa sản phẩm thất bại: " + error.message);
     }
+  }
+
+  // 🔹 Lấy danh sách danh mục (distinct) — lọc null/undefined
+  async getDistinctCategories() {
+    const cats = await ProductRepository.getDistinctCategories();
+    return (cats || []).filter(Boolean);
+  }
+
+  // 🔹 Lấy danh mục theo nhà hàng (distinct) — lọc null/undefined
+  async getDistinctCategoriesByRestaurant(restaurantId) {
+    const cats = await ProductRepository.getDistinctCategoriesByRestaurant(restaurantId);
+    return (cats || []).filter(Boolean);
   }
 }
 
