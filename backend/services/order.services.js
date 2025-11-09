@@ -1,10 +1,10 @@
 import OrderRepository from "../repositories/order.repositories.js";
 import ProductRepository from "../repositories/product.repositories.js";
-import DeliveryRepository from "../repositories/delivery.repositories.js"; // Thêm import DeliveryRepository
-import DroneRepository from "../repositories/drone.repositories.js"; // Thêm import DroneRepository
+import DeliveryRepository from "../repositories/delivery.repositories.js";
+import DroneRepository from "../repositories/drone.repositories.js";
 
 class OrderService {
-  // 🔹 Chỉnh sửa createOrder để gom nhóm theo nhà hàng
+  // 🔹 Tạo đơn hàng — có thể gồm nhiều nhà hàng
   async createOrder(orderData) {
     if (!orderData || !Array.isArray(orderData.items) || orderData.items.length === 0) {
       throw new Error("Thiếu thông tin đơn hàng (items)");
@@ -16,7 +16,7 @@ class OrderService {
       throw new Error("Vui lòng cung cấp địa chỉ giao hàng");
     }
 
-    // Tải thông tin sản phẩm cho tất cả items và nhóm theo restaurantId
+    // 🔸 Gom nhóm sản phẩm theo restaurantId
     const productCache = new Map();
     const groups = new Map(); // key = restaurantId, value = { items, totalPrice }
 
@@ -57,7 +57,7 @@ class OrderService {
       throw new Error("Không có món hợp lệ trong đơn hàng");
     }
 
-    // Nếu chỉ có 1 nhà hàng → hành vi cũ
+    // 🔹 Nếu chỉ có 1 nhà hàng → hành vi cũ
     if (groups.size === 1) {
       const [rid, group] = Array.from(groups.entries())[0];
       const payload = {
@@ -65,7 +65,7 @@ class OrderService {
         restaurantId: orderData.restaurantId || rid,
         items: group.items,
         totalPrice: group.totalPrice,
-        paymentMethod: orderData.paymentMethod || "COD", // ✅ thêm mặc định
+        paymentMethod: orderData.paymentMethod || "COD",
         shippingAddress: orderData.shippingAddress,
         note: orderData.note || "",
         status: orderData.status || "pending",
@@ -75,7 +75,7 @@ class OrderService {
       return await OrderRepository.createOrder(payload);
     }
 
-    // Nếu nhiều nhà hàng → tạo nhiều đơn nhỏ
+    // 🔹 Nếu nhiều nhà hàng → tạo nhiều đơn nhỏ
     const createdOrders = [];
     for (const [rid, group] of groups.entries()) {
       const payload = {
@@ -83,7 +83,7 @@ class OrderService {
         restaurantId: rid,
         items: group.items,
         totalPrice: group.totalPrice,
-        paymentMethod: orderData.paymentMethod || "COD", // ✅ thêm mặc định
+        paymentMethod: orderData.paymentMethod || "COD",
         shippingAddress: orderData.shippingAddress,
         note: orderData.note || "",
         status: orderData.status || "pending",
@@ -92,7 +92,6 @@ class OrderService {
       createdOrders.push(created);
     }
 
-    // Trả về mảng các đơn đã tạo
     return createdOrders;
   }
 
@@ -115,7 +114,7 @@ class OrderService {
   }
 
   async updateOrder(orderId, updateData) {
-    // Lấy thông tin đơn hàng hiện tại trước khi cập nhật
+    // Lấy thông tin đơn hàng hiện tại
     const existingOrder = await OrderRepository.getOrderById(orderId);
     if (!existingOrder) {
       throw new Error("Không tìm thấy đơn hàng để cập nhật");
@@ -124,13 +123,14 @@ class OrderService {
     const updated = await OrderRepository.updateOrder(orderId, updateData);
     if (!updated) throw new Error("Cập nhật đơn hàng thất bại");
 
-    // Nếu trạng thái đơn hàng được cập nhật thành 'completed' và có deliveryId
+    // ✅ Nếu đơn được hoàn thành và có drone → cho drone về idle
     if (updateData.status === "completed" && existingOrder.deliveryId) {
       const delivery = await DeliveryRepository.getDeliveryById(existingOrder.deliveryId);
       if (delivery && delivery.droneId) {
         await DroneRepository.updateDrone(delivery.droneId, { status: "idle" });
       }
     }
+
     return updated;
   }
 
@@ -138,6 +138,22 @@ class OrderService {
     const deleted = await OrderRepository.deleteOrder(orderId);
     if (!deleted) throw new Error("Xóa đơn hàng thất bại");
     return deleted;
+  }
+
+  // ✅ Khách hàng xác nhận đã nhận hàng
+  async confirmCompletedByCustomer(orderId, userId) {
+    const order = await OrderRepository.getOrderById(orderId);
+    if (!order) throw new Error("Không tìm thấy đơn hàng");
+    if (String(order.userId?._id || order.userId) !== String(userId)) {
+      throw new Error("Bạn không thể xác nhận đơn hàng không thuộc về bạn");
+    }
+    if (order.status !== "delivering") {
+      throw new Error("Chỉ có thể xác nhận khi đơn đang giao");
+    }
+
+    // Cập nhật sang 'completed' — sẽ tự đưa drone về idle
+    const updated = await this.updateOrder(orderId, { status: "completed" });
+    return updated;
   }
 }
 

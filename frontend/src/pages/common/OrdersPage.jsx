@@ -1,17 +1,19 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { toast } from "react-toastify";
-import { 
-  Package, 
-  Clock, 
-  Truck, 
-  CheckCircle, 
-  XCircle, 
+import {
+  Package,
+  Clock,
+  Truck,
+  CheckCircle,
+  XCircle,
   ShoppingBag,
   Calendar,
   DollarSign,
-  ChevronRight
+  ChevronRight,
 } from "lucide-react";
+
+const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:5000";
 
 export default function OrdersPage() {
   const navigate = useNavigate();
@@ -20,6 +22,8 @@ export default function OrdersPage() {
   const [loading, setLoading] = useState(true);
   const [selectedStatus, setSelectedStatus] = useState("all");
   const [refreshFlag, setRefreshFlag] = useState(0);
+
+  const token = localStorage.getItem("token");
 
   useEffect(() => {
     const wanted = location.state?.status;
@@ -31,7 +35,6 @@ export default function OrdersPage() {
   const loadOrders = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem("token");
       const user = JSON.parse(localStorage.getItem("user") || "null");
 
       if (!token || !user) {
@@ -40,7 +43,7 @@ export default function OrdersPage() {
         return;
       }
 
-      const res = await fetch(`http://localhost:5000/api/order/user/${user.id || user._id}`, {
+      const res = await fetch(`${API_BASE}/api/order/user/${user.id || user._id}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -71,62 +74,33 @@ export default function OrdersPage() {
     }
   };
 
-  const statusCounts = orders.reduce((acc, o) => {
-    acc[o.status] = (acc[o.status] || 0) + 1;
-    return acc;
-  }, {});
+  const confirmReceived = async (orderId) => {
+    if (!window.confirm("Xác nhận bạn đã nhận được đơn hàng?")) return;
+    try {
+      const res = await fetch(`${API_BASE}/api/order/${orderId}/confirm-completed`, {
+        method: "PUT",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Xác nhận thất bại");
 
-  const tabs = [
-    { 
-      key: "all", 
-      label: "Tất cả", 
-      icon: Package,
-      color: "gray"
-    },
-    { 
-      key: "pending", 
-      label: "Chờ xử lý", 
-      icon: Clock,
-      color: "yellow"
-    },
-    { 
-      key: "preparing", 
-      label: "Đang chuẩn bị", 
-      icon: ShoppingBag,
-      color: "blue"
-    },
-    { 
-      key: "delivering", 
-      label: "Đang giao", 
-      icon: Truck,
-      color: "purple"
-    },
-    { 
-      key: "completed", 
-      label: "Đã giao", 
-      icon: CheckCircle,
-      color: "green"
-    },
-    { 
-      key: "cancelled", 
-      label: "Đã hủy", 
-      icon: XCircle,
-      color: "red"
-    },
-  ];
-
-  const ordersToShow =
-    selectedStatus === "all"
-      ? orders
-      : orders.filter((o) => o.status === selectedStatus);
+      // ✅ Cập nhật UI
+      setOrders((prev) =>
+        prev.map((o) => (o._id === orderId ? { ...o, status: "completed" } : o))
+      );
+      toast.success("Đã xác nhận hoàn thành đơn hàng");
+    } catch (e) {
+      console.error(e);
+      toast.error(e.message || "Lỗi xác nhận");
+    }
+  };
 
   const cancelOrderById = async (orderId) => {
     if (!orderId) return;
     if (!window.confirm("Bạn có chắc muốn hủy đơn này?")) return;
 
     try {
-      const token = localStorage.getItem("token");
-      const res = await fetch(`http://localhost:5000/api/order/${orderId}`, {
+      const res = await fetch(`${API_BASE}/api/order/${orderId}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -148,7 +122,25 @@ export default function OrdersPage() {
     }
   };
 
-  // Helper function để lấy màu theo status
+  const statusCounts = orders.reduce((acc, o) => {
+    acc[o.status] = (acc[o.status] || 0) + 1;
+    return acc;
+  }, {});
+
+  const tabs = [
+    { key: "all", label: "Tất cả", icon: Package, color: "gray" },
+    { key: "pending", label: "Chờ xử lý", icon: Clock, color: "yellow" },
+    { key: "preparing", label: "Đang chuẩn bị", icon: ShoppingBag, color: "blue" },
+    { key: "delivering", label: "Đang giao", icon: Truck, color: "purple" },
+    { key: "completed", label: "Đã giao", icon: CheckCircle, color: "green" },
+    { key: "cancelled", label: "Đã hủy", icon: XCircle, color: "red" },
+  ];
+
+  const ordersToShow =
+    selectedStatus === "all"
+      ? orders
+      : orders.filter((o) => o.status === selectedStatus);
+
   const getStatusColor = (status) => {
     const colors = {
       pending: "bg-yellow-100 text-yellow-800 border-yellow-200",
@@ -160,7 +152,6 @@ export default function OrdersPage() {
     return colors[status] || "bg-gray-100 text-gray-800 border-gray-200";
   };
 
-  // Helper function để lấy text hiển thị
   const getStatusText = (status) => {
     const texts = {
       pending: "Chờ xử lý",
@@ -208,7 +199,6 @@ export default function OrdersPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 py-8 px-4">
       <div className="max-w-6xl mx-auto">
-        {/* Header */}
         <div className="mb-8">
           <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-2">
             Đơn hàng của bạn
@@ -216,14 +206,15 @@ export default function OrdersPage() {
           <p className="text-gray-600">Theo dõi và quản lý đơn hàng của bạn</p>
         </div>
 
-        {/* Status Tabs */}
+        {/* Tabs */}
         <div className="mb-8 bg-white rounded-2xl shadow-lg p-4">
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
             {tabs.map((tab) => {
               const Icon = tab.icon;
               const isActive = selectedStatus === tab.key;
-              const count = tab.key === "all" ? orders.length : (statusCounts[tab.key] || 0);
-              
+              const count =
+                tab.key === "all" ? orders.length : statusCounts[tab.key] || 0;
+
               return (
                 <button
                   key={tab.key}
@@ -235,11 +226,17 @@ export default function OrdersPage() {
                   }`}
                 >
                   <div className="flex flex-col items-center gap-2">
-                    <Icon className={`w-6 h-6 ${isActive ? "text-white" : `text-${tab.color}-600`}`} />
+                    <Icon
+                      className={`w-6 h-6 ${
+                        isActive ? "text-white" : `text-${tab.color}-600`
+                      }`}
+                    />
                     <span className="text-sm font-semibold">{tab.label}</span>
-                    <span className={`text-xs px-2 py-1 rounded-full ${
-                      isActive ? "bg-white/20" : "bg-gray-200"
-                    }`}>
+                    <span
+                      className={`text-xs px-2 py-1 rounded-full ${
+                        isActive ? "bg-white/20" : "bg-gray-200"
+                      }`}
+                    >
                       {count}
                     </span>
                   </div>
@@ -249,7 +246,7 @@ export default function OrdersPage() {
           </div>
         </div>
 
-        {/* Orders List */}
+        {/* Orders list */}
         {ordersToShow.length === 0 ? (
           <EmptyStatusView statusKey={selectedStatus} />
         ) : (
@@ -260,29 +257,34 @@ export default function OrdersPage() {
                 onClick={() => navigate(`/orders/${order._id}`)}
                 className="bg-white rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden cursor-pointer group"
               >
-                {/* Header với gradient */}
                 <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-4">
                   <div className="flex justify-between items-start text-white">
                     <div>
                       <div className="flex items-center gap-2 mb-1">
                         <Package className="w-5 h-5" />
-                        <span className="font-semibold">Đơn #{order._id.slice(-8)}</span>
+                        <span className="font-semibold">
+                          Đơn #{order._id.slice(-8)}
+                        </span>
                       </div>
                       <div className="flex items-center gap-2 text-sm text-white/80">
                         <Calendar className="w-4 h-4" />
-                        <span>{new Date(order.createdAt).toLocaleDateString("vi-VN")}</span>
+                        <span>
+                          {new Date(order.createdAt).toLocaleDateString("vi-VN")}
+                        </span>
                       </div>
                     </div>
-                    
-                    <span className={`px-4 py-2 rounded-xl text-sm font-semibold border-2 ${getStatusColor(order.status)}`}>
+
+                    <span
+                      className={`px-4 py-2 rounded-xl text-sm font-semibold border-2 ${getStatusColor(
+                        order.status
+                      )}`}
+                    >
                       {getStatusText(order.status)}
                     </span>
                   </div>
                 </div>
 
-                {/* Body */}
                 <div className="p-6">
-                  {/* Items List */}
                   <div className="mb-4">
                     <h3 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
                       <ShoppingBag className="w-5 h-5 text-blue-600" />
@@ -299,16 +301,26 @@ export default function OrdersPage() {
                               <span className="text-2xl">🍔</span>
                             </div>
                             <div>
-                              <div className="font-medium text-gray-800">{it.productId.name}</div>
+                              <div className="font-medium text-gray-800">
+                                {it.productId.name}
+                              </div>
                               <div className="text-sm text-gray-500">
-                                {Number(it.productId.price || 0).toLocaleString("vi-VN")}₫
+                                {Number(it.productId.price || 0).toLocaleString(
+                                  "vi-VN"
+                                )}
+                                ₫
                               </div>
                             </div>
                           </div>
                           <div className="text-right">
-                            <div className="text-sm text-gray-600">x{it.quantity}</div>
+                            <div className="text-sm text-gray-600">
+                              x{it.quantity}
+                            </div>
                             <div className="font-semibold text-blue-600">
-                              {(Number(it.productId.price || 0) * it.quantity).toLocaleString("vi-VN")}₫
+                              {(
+                                Number(it.productId.price || 0) * it.quantity
+                              ).toLocaleString("vi-VN")}
+                              ₫
                             </div>
                           </div>
                         </div>
@@ -316,7 +328,6 @@ export default function OrdersPage() {
                     </div>
                   </div>
 
-                  {/* Footer */}
                   <div className="pt-4 border-t border-gray-200">
                     <div className="flex justify-between items-center">
                       <div className="flex items-center gap-2 text-gray-600">
@@ -327,7 +338,7 @@ export default function OrdersPage() {
                             : "Đã thanh toán"}
                         </span>
                       </div>
-                      
+
                       <div className="flex items-center gap-3">
                         <div className="text-right">
                           <div className="text-sm text-gray-500">Tổng tiền</div>
@@ -335,8 +346,9 @@ export default function OrdersPage() {
                             {order.totalPrice?.toLocaleString("vi-VN")}₫
                           </div>
                         </div>
-                        
-                        {(order.status === "pending" || order.status === "preparing") && (
+
+                        {(order.status === "pending" ||
+                          order.status === "preparing") && (
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
@@ -348,7 +360,20 @@ export default function OrdersPage() {
                             Hủy đơn
                           </button>
                         )}
-                        
+
+                        {order.status === "delivering" && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              confirmReceived(order._id);
+                            }}
+                            className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors text-sm font-semibold flex items-center gap-2"
+                          >
+                            <CheckCircle className="w-4 h-4" />
+                            Xác nhận đã nhận hàng
+                          </button>
+                        )}
+
                         <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-blue-600 transition-colors" />
                       </div>
                     </div>

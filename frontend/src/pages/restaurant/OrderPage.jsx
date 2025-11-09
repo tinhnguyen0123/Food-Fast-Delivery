@@ -10,8 +10,7 @@ import {
   MapPin,
   DollarSign,
   Calendar,
-  User,
-  ChevronRight
+  User
 } from "lucide-react";
 
 const TABS = [
@@ -101,7 +100,6 @@ export default function OrdersPage() {
 
   const ordersToShow = tab === "all" ? orders : orders.filter((o) => o.status === tab);
 
-  // ✅ Xác nhận đơn hàng (pending → preparing)
   const confirmOrder = async (orderId) => {
     try {
       const res = await fetch(`http://localhost:5000/api/order/${orderId}`, {
@@ -115,30 +113,25 @@ export default function OrdersPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Xác nhận đơn thất bại");
       setOrders((prev) => prev.map((o) => (o._id === orderId ? { ...o, status: "preparing" } : o)));
-      toast.success(" Đã xác nhận đơn hàng");
+      toast.success("Đã xác nhận đơn hàng");
     } catch (e) {
       console.error(e);
       toast.error(e.message || "Lỗi xác nhận đơn");
     }
   };
 
-  // ✅ Sẵn sàng giao (preparing → preparing - đánh dấu sẵn sàng cho drone)
   const markReady = async (orderId) => {
     try {
-      // Giữ nguyên status "preparing" nhưng có thể thêm field isReady = true nếu cần
-      // Hiện tại chỉ cần đảm bảo status = "preparing" để drone có thể nhận
-      toast.success(" Đơn hàng đã sẵn sàng cho drone nhận");
-      // Không cần gọi API nếu chỉ là thông báo
+      toast.success("Đơn hàng đã sẵn sàng cho drone nhận");
     } catch (e) {
       console.error(e);
       toast.error("Lỗi đánh dấu sẵn sàng");
     }
   };
 
-  // ✅ Hủy đơn hàng
   const cancelOrder = async (orderId) => {
     if (!window.confirm("Bạn có chắc muốn hủy đơn hàng này?")) return;
-    
+
     try {
       const res = await fetch(`http://localhost:5000/api/order/${orderId}`, {
         method: "PUT",
@@ -151,14 +144,13 @@ export default function OrdersPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Hủy đơn thất bại");
       setOrders((prev) => prev.map((o) => (o._id === orderId ? { ...o, status: "cancelled" } : o)));
-      toast.success(" Đã hủy đơn hàng");
+      toast.success("Đã hủy đơn hàng");
     } catch (e) {
       console.error(e);
       toast.error(e.message || "Lỗi hủy đơn");
     }
   };
 
-  // ✅ Cập nhật trạng thái thủ công
   const updateStatus = async (orderId, status) => {
     try {
       const res = await fetch(`http://localhost:5000/api/order/${orderId}`, {
@@ -172,14 +164,13 @@ export default function OrdersPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Cập nhật trạng thái thất bại");
       setOrders((prev) => prev.map((o) => (o._id === orderId ? { ...o, status } : o)));
-      toast.success(" Đã cập nhật trạng thái");
+      toast.success("Đã cập nhật trạng thái");
     } catch (e) {
       console.error(e);
       toast.error(e.message || "Lỗi cập nhật trạng thái");
     }
   };
 
-  // Helper functions
   const getStatusBadge = (status) => {
     const badges = {
       pending: { color: "bg-yellow-100 text-yellow-700 border-yellow-200", icon: Clock, text: "Chờ xử lý" },
@@ -238,9 +229,7 @@ export default function OrdersPage() {
               >
                 <Icon className="w-4 h-4" />
                 <span>{t.label}</span>
-                <span className={`px-2 py-0.5 rounded-full text-xs ${
-                  isActive ? "bg-white/20" : "bg-gray-200"
-                }`}>
+                <span className={`px-2 py-0.5 rounded-full text-xs ${isActive ? "bg-white/20" : "bg-gray-200"}`}>
                   {count}
                 </span>
               </button>
@@ -266,12 +255,9 @@ export default function OrdersPage() {
           {ordersToShow.map((order) => {
             const badge = getStatusBadge(order.status);
             const BadgeIcon = badge.icon;
-            
+
             return (
-              <div
-                key={order._id}
-                className="bg-white rounded-xl shadow-md hover:shadow-lg transition-shadow overflow-hidden"
-              >
+              <div key={order._id} className="bg-white rounded-xl shadow-md hover:shadow-lg transition-shadow overflow-hidden">
                 {/* Order Header */}
                 <div className="bg-gradient-to-r from-blue-50 to-purple-50 p-4 border-b">
                   <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
@@ -289,7 +275,6 @@ export default function OrdersPage() {
                         </p>
                       </div>
                     </div>
-                    
                     <span className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-semibold border-2 ${badge.color}`}>
                       <BadgeIcon className="w-4 h-4" />
                       {badge.text}
@@ -369,77 +354,43 @@ export default function OrdersPage() {
 
                   {/* Action Buttons */}
                   <div className="flex flex-wrap gap-2">
-                    {/* Nút cho đơn hàng "Chờ xử lý" */}
+                    {/* Pending actions */}
                     {order.status === "pending" && (
                       <>
-                        <button
-                          onClick={() => confirmOrder(order._id)}
-                          className="flex-1 sm:flex-none bg-gradient-to-r from-green-600 to-emerald-600 text-white px-6 py-2.5 rounded-lg font-semibold hover:shadow-lg transition-all flex items-center justify-center gap-2"
-                        >
-                          <CheckCircle className="w-5 h-5" />
-                          Xác nhận đơn
+                        <button onClick={() => confirmOrder(order._id)} className="flex-1 sm:flex-none bg-gradient-to-r from-green-600 to-emerald-600 text-white px-6 py-2.5 rounded-lg font-semibold hover:shadow-lg transition-all flex items-center justify-center gap-2">
+                          <CheckCircle className="w-5 h-5" /> Xác nhận đơn
                         </button>
-                        
-                        <button
-                          onClick={() => markReady(order._id)}
-                          className="flex-1 sm:flex-none bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-2.5 rounded-lg font-semibold hover:shadow-lg transition-all flex items-center justify-center gap-2"
-                        >
-                          <Truck className="w-5 h-5" />
-                          Sẵn sàng
+
+                        <button onClick={() => markReady(order._id)} className="flex-1 sm:flex-none bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-2.5 rounded-lg font-semibold hover:shadow-lg transition-all flex items-center justify-center gap-2">
+                          <Truck className="w-5 h-5" /> Sẵn sàng
                         </button>
-                        
-                        <button
-                          onClick={() => cancelOrder(order._id)}
-                          className="flex-1 sm:flex-none bg-gradient-to-r from-red-600 to-pink-600 text-white px-6 py-2.5 rounded-lg font-semibold hover:shadow-lg transition-all flex items-center justify-center gap-2"
-                        >
-                          <XCircle className="w-5 h-5" />
-                          Hủy đơn
+
+                        <button onClick={() => cancelOrder(order._id)} className="flex-1 sm:flex-none bg-red-600 text-white px-6 py-2.5 rounded-lg font-semibold hover:bg-red-700 transition-all flex items-center justify-center gap-2">
+                          <XCircle className="w-5 h-5" /> Hủy đơn
                         </button>
                       </>
                     )}
 
-                    {/* Nút chuyển trạng thái khác (cho các trạng thái không phải pending) */}
+                    {/* Các nút cho trạng thái không phải pending, completed, cancelled */}
                     {order.status !== "pending" && order.status !== "completed" && order.status !== "cancelled" && (
                       <div className="flex flex-wrap gap-2 w-full">
                         {order.status === "preparing" && (
-                          <button
-                            onClick={() => updateStatus(order._id, "delivering")}
-                            className="flex-1 sm:flex-none bg-purple-600 text-white px-6 py-2.5 rounded-lg font-semibold hover:bg-purple-700 transition-all flex items-center justify-center gap-2"
-                          >
-                            <Truck className="w-5 h-5" />
-                            Bắt đầu giao
-                          </button>
-                        )}
-                        
-                        {order.status === "delivering" && (
-                          <button
-                            onClick={() => updateStatus(order._id, "completed")}
-                            className="flex-1 sm:flex-none bg-green-600 text-white px-6 py-2.5 rounded-lg font-semibold hover:bg-green-700 transition-all flex items-center justify-center gap-2"
-                          >
-                            <CheckCircle className="w-5 h-5" />
-                            Hoàn thành
+                          <button onClick={() => updateStatus(order._id, "delivering")} className="flex-1 sm:flex-none bg-purple-600 text-white px-6 py-2.5 rounded-lg font-semibold hover:bg-purple-700 transition-all flex items-center justify-center gap-2">
+                            <Truck className="w-5 h-5" /> Bắt đầu giao
                           </button>
                         )}
 
                         {(order.status === "preparing" || order.status === "delivering") && (
-                          <button
-                            onClick={() => cancelOrder(order._id)}
-                            className="flex-1 sm:flex-none bg-red-600 text-white px-6 py-2.5 rounded-lg font-semibold hover:bg-red-700 transition-all flex items-center justify-center gap-2"
-                          >
-                            <XCircle className="w-5 h-5" />
-                            Hủy đơn
+                          <button onClick={() => cancelOrder(order._id)} className="flex-1 sm:flex-none bg-red-600 text-white px-6 py-2.5 rounded-lg font-semibold hover:bg-red-700 transition-all flex items-center justify-center gap-2">
+                            <XCircle className="w-5 h-5" /> Hủy đơn
                           </button>
                         )}
                       </div>
                     )}
 
-                    {/* Hiển thị thông báo cho đơn đã hoàn thành hoặc đã hủy */}
+                    {/* Completed / Cancelled status */}
                     {(order.status === "completed" || order.status === "cancelled") && (
-                      <div className={`w-full text-center py-2 rounded-lg font-medium ${
-                        order.status === "completed" 
-                          ? "bg-green-100 text-green-700" 
-                          : "bg-red-100 text-red-700"
-                      }`}>
+                      <div className={`w-full text-center py-2 rounded-lg font-medium ${order.status === "completed" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
                         {order.status === "completed" ? "✅ Đơn hàng đã hoàn thành" : "❌ Đơn hàng đã bị hủy"}
                       </div>
                     )}
