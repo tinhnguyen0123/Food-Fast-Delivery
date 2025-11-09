@@ -36,6 +36,18 @@ class ProductRepository {
   async deleteProduct(productId) {
     return await Product.findByIdAndDelete(productId);
   }
+
+  // Lấy danh sách danh mục (fixed list từ enum)
+  async getDistinctCategories() {
+    const cats = Product.schema.path("category")?.options?.enum || [];
+    return cats;
+  }
+
+  // Lấy danh mục theo nhà hàng (cũng trả danh sách cố định)
+  async getDistinctCategoriesByRestaurant(_restaurantId) {
+    const cats = Product.schema.path("category")?.options?.enum || [];
+    return cats;
+  }
 }
 
 export default new ProductRepository();
