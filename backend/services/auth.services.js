@@ -21,10 +21,10 @@ class AuthService {
   // Đăng nhập
   async login(email, password) {
     const user = await UserRepository.getUserByEmail(email);
-    if (!user) throw new Error("User not found");
+    if (!user) throw new Error("Người dùng không tìm thấy");
 
     const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) throw new Error("Invalid password");
+    if (!isMatch) throw new Error("Mật khẩu không hợp lệ");
 
     // Tạo token JWT
     const token = jwt.sign(

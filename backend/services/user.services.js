@@ -30,13 +30,13 @@ class UserService {
   // Đăng nhập
   async loginUser({ email, password }) {
     const user = await UserRepository.getUserByEmail(email);
-    if (!user) throw new Error("Invalid email or password");
+    if (!user) throw new Error("Email hoặc mật khẩu không hợp lệ");
     
     // ✅ Kiểm tra trạng thái tài khoản
     if (user.status === "suspended") throw new Error("Tài khoản đã bị khóa");
 
     const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) throw new Error("Invalid email or password");
+    if (!isMatch) throw new Error("Email hoặc mật khẩu không hợp lệ");
 
     const token = jwt.sign(
       { id: user._id, role: user.role },
