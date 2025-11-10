@@ -50,7 +50,7 @@ export default function CartPage() {
       if (data._sanitized && Array.isArray(data._removedItems)) {
         data._removedItems.forEach((name) =>
           toast.warning(
-            `Món '${name}' đã bị xóa vì nhà hàng không còn khả dụng`
+            `Món '${name}' đã bị xóa vì không còn khả dụng`
           )
         );
       }
