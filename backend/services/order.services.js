@@ -29,11 +29,6 @@ class OrderService {
       if (!product) {
         product = await ProductRepository.getProductById(pid);
         if (!product) throw new Error(`Sản phẩm không tồn tại: ${pid}`);
-        // ✅ FIX: Kiểm tra trạng thái `available` của sản phẩm ngay tại thời điểm tạo đơn hàng.
-        // Đây là bước kiểm tra cuối cùng và quan trọng nhất.
-        if (!product.available) {
-          throw new Error(`Món "${product.name}" hiện không còn khả dụng để đặt hàng.`);
-        }
         productCache.set(pid, product);
       }
 
