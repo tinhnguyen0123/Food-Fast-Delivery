@@ -17,10 +17,31 @@ import {
   User,
   Store,
   Plane,
+  // ✅ Bổ sung các icon cho modal chi tiết
+  MapPin,
+  Mail,
+  ShoppingCart,
 } from "lucide-react";
 
 // ✅ Khai báo API base từ biến môi trường (hoặc mặc định localhost)
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:5000";
+
+// ✅ Thêm component con để hiển thị thông tin chi tiết
+// Component này giúp bố cục modal gọn gàng hơn
+function InfoRow({ icon: Icon, label, value }) {
+  if (!value) return null; // Không hiển thị nếu không có giá trị
+  return (
+    <div className="flex items-start gap-3">
+      <Icon className="w-5 h-5 text-gray-500 mt-0.5 shrink-0" />
+      <div className="flex-1">
+        <p className="text-sm font-medium text-gray-600">{label}</p>
+        <p className="text-sm text-gray-800 font-semibold break-words">
+          {value}
+        </p>
+      </div>
+    </div>
+  );
+}
 
 export default function OrdersPage() {
   const [orders, setOrders] = useState([]);
@@ -75,6 +96,7 @@ export default function OrdersPage() {
     const matchesSearch =
       !search ||
       (o.orderNumber && o.orderNumber.includes(search)) ||
+      // ✅ Sửa lỗi: Đảm bảo customer tồn tại trước khi gọi toLowerCase()
       (o.customer && o.customer.toLowerCase().includes(search.toLowerCase())) ||
       (o._id && o._id.toLowerCase().includes(search.toLowerCase()));
     const matchesFilter = filter === "all" || o.status === filter;
@@ -93,8 +115,6 @@ export default function OrdersPage() {
     return badges[status] || { bg: "bg-gray-100", text: "text-gray-700", border: "border-gray-300", icon: AlertCircle };
   };
 
-  // ✅ Thêm đối tượng map trạng thái tiếng Anh sang tiếng Việt
-  // Chúng ta sẽ dùng object này để hiển thị nhãn tiếng Việt trong bảng
   const statusLabels = {
     pending: "Chờ xử lý",
     preparing: "Đang chuẩn bị",
@@ -104,16 +124,16 @@ export default function OrdersPage() {
     cancelled: "Đã hủy",
   };
 
-
   const stats = {
     total: orders.length,
     pending: orders.filter((o) => o.status === "pending").length,
     preparing: orders.filter((o) => o.status === "preparing").length,
     delivering: orders.filter((o) => o.status === "delivering").length,
     completed: orders.filter((o) => o.status === "completed").length,
+    // ✅ Sửa lỗi: Đảm bảo o.totalPrice tồn tại và là số
     totalRevenue: orders
       .filter((o) => o.status === "completed")
-      .reduce((sum, o) => sum + (o.total || 0), 0),
+      .reduce((sum, o) => sum + (Number(o.totalPrice) || 0), 0),
   };
 
   const statusFilters = [
@@ -189,7 +209,8 @@ export default function OrdersPage() {
               <DollarSign className="w-6 h-6" />
             </div>
             <span className="text-2xl font-bold">
-              ${stats.totalRevenue.toLocaleString()}
+              {/* ✅ Sửa lỗi: Dùng đơn vị ₫ (đồng) */}
+              {stats.totalRevenue.toLocaleString()}₫
             </span>
           </div>
           <p className="text-green-100 text-sm">Doanh thu</p>
@@ -362,8 +383,6 @@ export default function OrdersPage() {
                           className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border ${badge.bg} ${badge.text} ${badge.border}`}
                         >
                           <Icon className="w-3.5 h-3.5" />
-                          {/* ❌ Đây là code cũ: {order.status} */}
-                          {/* ✅ Sửa lỗi: Hiển thị nhãn tiếng Việt bằng cách tra cứu trong statusLabels */}
                           {statusLabels[order.status] || order.status}
                         </span>
                       </td>
@@ -414,7 +433,7 @@ export default function OrdersPage() {
         </div>
       </div>
 
-      {/* Order Detail Modal */}
+      {/* ✏️ Order Detail Modal - ĐÃ CẬP NHẬT GIAO DIỆN */}
       {selectedOrder && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
@@ -437,11 +456,157 @@ export default function OrdersPage() {
                 </button>
               </div>
             </div>
+            {/* ❌ Bỏ code cũ (pre)
             <div className="p-6">
               <pre className="text-sm bg-gray-50 p-4 rounded-lg overflow-auto">
                 {JSON.stringify(selectedOrder, null, 2)}
               </pre>
             </div>
+            */}
+            
+            {/* ✅ Thêm giao diện chi tiết mới */}
+            <div className="p-6 space-y-6">
+              {/* --- Section 1: Tóm tắt --- */}
+              <div className="bg-gray-50 rounded-xl p-4 border border-gray-200">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div>
+                    <p className="text-sm font-medium text-gray-500">
+                      Mã đơn hàng
+                    </p>
+                    <p className="font-semibold text-blue-600 font-mono">
+                      #{selectedOrder.orderNumber || selectedOrder._id?.slice(-8)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-500">
+                      Trạng thái
+                    </p>
+                    {(() => {
+                      const badge = getStatusBadge(selectedOrder.status);
+                      const Icon = badge.icon;
+                      return (
+                        <span
+                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border ${badge.bg} ${badge.text} ${badge.border}`}
+                        >
+                          <Icon className="w-3.5 h-3.5" />
+                          {statusLabels[selectedOrder.status] || selectedOrder.status}
+                        </span>
+                      );
+                    })()}
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-500">
+                      Ngày tạo
+                    </p>
+                    <p className="font-semibold text-gray-700">
+                      {new Date(selectedOrder.createdAt).toLocaleString("vi-VN")}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* --- Section 2: Chi tiết món hàng --- */}
+              <div className="border border-gray-200 rounded-xl">
+                <div className="flex items-center gap-3 p-4 border-b border-gray-200 bg-gray-50">
+                  <ShoppingCart className="w-5 h-5 text-gray-600" />
+                  <h4 className="text-lg font-semibold text-gray-800">
+                    Chi tiết món hàng
+                  </h4>
+                </div>
+                <div className="p-4 space-y-3 divide-y divide-gray-100">
+                  {selectedOrder.items.map((item, index) => (
+                    <div
+                      key={index}
+                      className="flex justify-between items-center pt-3 first:pt-0"
+                    >
+                      <div>
+                        <p className="font-semibold text-gray-800">
+                          {item.name}
+                        </p>
+                        <p className="text-sm text-gray-500">
+                          {item.quantity} x {item.priceAtOrderTime?.toLocaleString()}₫
+                        </p>
+                      </div>
+                      <p className="font-semibold text-gray-900">
+                        {(item.quantity * item.priceAtOrderTime).toLocaleString()}₫
+                      </p>
+                    </div>
+                  ))}
+                </div>
+                <div className="p-4 bg-gray-50 border-t border-gray-200 rounded-b-xl">
+                  <div className="flex justify-between items-center">
+                    <p className="text-lg font-bold text-gray-800">
+                      Tổng cộng
+                    </p>
+                    <p className="text-lg font-bold text-green-600">
+                      {selectedOrder.totalPrice?.toLocaleString()}₫
+                    </p>
+                  </div>
+                  <div className="flex justify-between items-center mt-2">
+                    <p className="text-sm font-medium text-gray-600">
+                      Phương thức thanh toán
+                    </p>
+                    <p className="text-sm font-semibold text-gray-800 px-3 py-1 bg-blue-100 text-blue-700 rounded-full">
+                      {selectedOrder.paymentMethod}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* --- Section 3: Thông tin Khách hàng & Nhà hàng --- */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Khách hàng */}
+                <div className="border border-gray-200 rounded-xl">
+                  <div className="flex items-center gap-3 p-4 border-b border-gray-200 bg-gray-50">
+                    <User className="w-5 h-5 text-gray-600" />
+                    <h4 className="text-lg font-semibold text-gray-800">
+                      Khách hàng
+                    </h4>
+                  </div>
+                  <div className="p-4 space-y-4">
+                    <InfoRow
+                      icon={User}
+                      label="Tên"
+                      value={selectedOrder.userId?.name}
+                    />
+                    <InfoRow
+                      icon={Mail}
+                      label="Email"
+                      value={selectedOrder.userId?.email}
+                    />
+                    <InfoRow
+                      icon={MapPin}
+                      label="Địa chỉ giao hàng"
+                      value={selectedOrder.shippingAddress?.text}
+                    />
+                  </div>
+                </div>
+
+                {/* Nhà hàng */}
+                <div className="border border-gray-200 rounded-xl">
+                  <div className="flex items-center gap-3 p-4 border-b border-gray-200 bg-gray-50">
+                    <Store className="w-5 h-5 text-gray-600" />
+                    <h4 className="text-lg font-semibold text-gray-800">
+                      Nhà hàng
+                    </h4>
+                  </div>
+                  <div className="p-4 space-y-4">
+                    <InfoRow
+                      icon={Store}
+                      label="Tên"
+                      value={selectedOrder.restaurantId?.name}
+                    />
+                    <InfoRow
+                      icon={MapPin}
+                      label="Địa chỉ"
+                      value={selectedOrder.restaurantId?.address}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+            {/* Kết thúc giao diện mới */}
+            
           </div>
         </div>
       )}
