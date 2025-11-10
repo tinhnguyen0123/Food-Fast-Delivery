@@ -93,6 +93,18 @@ export default function OrdersPage() {
     return badges[status] || { bg: "bg-gray-100", text: "text-gray-700", border: "border-gray-300", icon: AlertCircle };
   };
 
+  // ✅ Thêm đối tượng map trạng thái tiếng Anh sang tiếng Việt
+  // Chúng ta sẽ dùng object này để hiển thị nhãn tiếng Việt trong bảng
+  const statusLabels = {
+    pending: "Chờ xử lý",
+    preparing: "Đang chuẩn bị",
+    ready: "Sẵn sàng",
+    delivering: "Đang giao",
+    completed: "Hoàn thành",
+    cancelled: "Đã hủy",
+  };
+
+
   const stats = {
     total: orders.length,
     pending: orders.filter((o) => o.status === "pending").length,
@@ -350,7 +362,9 @@ export default function OrdersPage() {
                           className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border ${badge.bg} ${badge.text} ${badge.border}`}
                         >
                           <Icon className="w-3.5 h-3.5" />
-                          {order.status}
+                          {/* ❌ Đây là code cũ: {order.status} */}
+                          {/* ✅ Sửa lỗi: Hiển thị nhãn tiếng Việt bằng cách tra cứu trong statusLabels */}
+                          {statusLabels[order.status] || order.status}
                         </span>
                       </td>
                       <td className="py-4 px-6">
