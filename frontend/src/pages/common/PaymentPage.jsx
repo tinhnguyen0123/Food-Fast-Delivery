@@ -76,7 +76,7 @@ export default function PaymentPage() {
       // 🔹 Hiển thị cảnh báo món bị loại
       if (data._sanitized && data._removedItems?.length) {
         data._removedItems.forEach((n) =>
-          toast.warning(`Món '${n}' đã bị loại khỏi giỏ (nhà hàng bị khóa)`)
+          toast.warning(`Món '${n}' đã bị loại khỏi giỏ vì không còn khả dụng`)
         );
       }
     } catch (e) {
@@ -179,6 +179,12 @@ export default function PaymentPage() {
       return;
     }
 
+    // ✅ FIX: Kiểm tra địa chỉ giao hàng ngay tại frontend để phản hồi nhanh hơn
+    if (!address || !address.trim()) {
+      toast.error("Vui lòng chọn hoặc tìm kiếm địa chỉ giao hàng trên bản đồ.");
+      return;
+    }
+
     // 🔹 Re-check giỏ hàng trước khi tạo đơn
     try {
       const token = localStorage.getItem("token");
@@ -188,7 +194,7 @@ export default function PaymentPage() {
       const latest = await res.json();
       if (latest._sanitized) {
         toast.warning(
-          "Giỏ hàng đã được cập nhật do nhà hàng bị khóa. Vui lòng kiểm tra lại."
+          "Giỏ hàng đã được cập nhật do có món không còn khả dụng. Vui lòng kiểm tra lại."
         );
         setCart(latest);
         return;
@@ -228,9 +234,10 @@ export default function PaymentPage() {
           body: JSON.stringify(payload),
         });
 
+        // ✅ FIX: Đọc lỗi cụ thể từ backend thay vì ghi đè bằng lỗi chung chung.
         if (!res.ok) {
-          const errorData = await res.json().catch(() => ({}));
-          throw new Error(errorData.message || "Tạo đơn thất bại");
+          const errorData = await res.json();
+          throw new Error(errorData.message || "Tạo đơn hàng thất bại.");
         }
         const created = await res.json();
 

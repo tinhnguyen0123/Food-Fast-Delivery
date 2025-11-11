@@ -131,7 +131,8 @@ export default function ProductsPage() {
 
   // Lọc sản phẩm
   const filteredProducts = products.filter((p) => {
-    const matchesCategory = selectedCategory === "all" || p.category === selectedCategory;
+    // ✅ FIX: Không lọc theo `available` ở đây nữa, để ProductCard tự xử lý
+    const matchesCategory = restaurantId || selectedCategory === "all" || p.category === selectedCategory;
     const matchesQuery = p.name?.toLowerCase().includes(query.trim().toLowerCase());
     return matchesCategory && matchesQuery;
   });

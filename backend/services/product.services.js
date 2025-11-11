@@ -48,7 +48,8 @@ class ProductService {
 
   // 📦 Lấy sản phẩm theo nhà hàng (dành cho khách hàng)
   async getProductsByRestaurant(restaurantId) {
-    return await ProductRepository.getProductsByRestaurant(restaurantId);
+    // ✅ FIX: Lấy tất cả sản phẩm, bao gồm cả món bị ẩn, để frontend xử lý hiển thị
+    return await ProductRepository.getAllProductsByRestaurant(restaurantId);
   }
 
   // 📦 Lấy TẤT CẢ sản phẩm theo nhà hàng (DÀNH CHO CHỦ)
@@ -59,8 +60,7 @@ class ProductService {
   // 🏷️ Lấy sản phẩm theo category (chỉ hiển thị nếu nhà hàng đã verified)
   async getProductsByCategory(category) {
     try {
-      const query = !category || category === "all" ? {} : { category };
-      query.available = true; // Chỉ lấy sản phẩm đang bán
+      const query = !category || category === "all" ? {} : { category }; // Không lọc theo `available` nữa
       const products = await Product.find(query)
         .sort({ createdAt: -1 })
         .populate({
