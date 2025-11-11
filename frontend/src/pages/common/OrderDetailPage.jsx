@@ -198,10 +198,12 @@ export default function OrderDetailPage() {
                 <div>
                   <p className="text-sm text-gray-600 mb-1">Phương thức thanh toán</p>
                   <p className="font-semibold text-gray-800">
-                    {order.paymentMethod === "VNPAY"
-                      ? (order.paymentId?.status === "paid"
-                          ? "✅ Đã thanh toán qua VNPAY"
-                          : "⏳ Chờ thanh toán VNPAY")
+                    {order.paymentMethod === "MOMO"
+                      ? order.paymentId?.status === "paid"
+                        ? "✅ Đã thanh toán qua MoMo"
+                        : order.paymentId?.status === "failed"
+                        ? "❌ Thanh toán MoMo thất bại"
+                        : "⏳ Chờ thanh toán MoMo"
                       : "💵 Thanh toán khi nhận hàng"}
                   </p>
                 </div>

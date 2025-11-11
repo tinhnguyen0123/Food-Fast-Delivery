@@ -23,7 +23,7 @@ const OrderSchema = new mongoose.Schema(
       default: "pending",
     },
     totalPrice: { type: Number, required: true, min: 0 },
-    paymentMethod: { type: String, enum: ["COD", "VNPAY"], default: "COD" },
+    paymentMethod: { type: String, enum: ["COD", "MOMO"], default: "COD" },
     paymentId: { type: mongoose.Schema.Types.ObjectId, ref: "Payment" },
     deliveryId: { type: mongoose.Schema.Types.ObjectId, ref: "Delivery" },
     shippingAddress: {

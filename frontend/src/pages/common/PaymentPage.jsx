@@ -228,10 +228,13 @@ export default function PaymentPage() {
           body: JSON.stringify(payload),
         });
 
-        if (!res.ok) throw new Error("Tạo đơn thất bại");
+        if (!res.ok) {
+          const errorData = await res.json().catch(() => ({}));
+          throw new Error(errorData.message || "Tạo đơn thất bại");
+        }
         const created = await res.json();
 
-        if (paymentMethod === "VNPAY") {
+        if (paymentMethod === "MOMO") {
           const payRes = await fetch(`http://localhost:5000/api/payment`, {
             method: "POST",
             headers: {
@@ -241,20 +244,25 @@ export default function PaymentPage() {
             body: JSON.stringify({
               orderId: created._id,
               amount: created.totalPrice,
-              method: "VNPAY",
+              method: "MOMO",
             }),
           });
 
-          if (payRes.ok) {
-            const payData = await payRes.json();
-            if (payData.paymentUrl) {
-              window.location.href = payData.paymentUrl;
-              return;
-            }
+          if (!payRes.ok) {
+            const payErrorData = await payRes.json().catch(() => ({}));
+            throw new Error(payErrorData.message || "Không thể tạo thanh toán MoMo");
           }
+          const payData = await payRes.json();
+          if (payData.paymentUrl) {
+            window.location.href = payData.paymentUrl;
+            return;
+          }
+          // Nếu tạo payment thất bại
+          throw new Error("Không thể tạo thanh toán MoMo");
         }
       }
-
+      
+      // Nếu là COD thì chạy cái này
       await clearCartOnServer(cart._id);
       toast.success("Tạo đơn thành công");
       navigate("/orders");
@@ -337,7 +345,7 @@ export default function PaymentPage() {
             className="border p-3 rounded-lg w-full"
           >
             <option value="COD">💵 Thanh toán khi nhận (COD)</option>
-            <option value="VNPAY">💳 VNPAY (online)</option>
+            <option value="MOMO">💳 Ví MoMo (online)</option>
           </select>
         </div>
       </div>
