@@ -22,7 +22,6 @@ L.Icon.Default.mergeOptions({
   shadowUrl,
 });
 
-// Component để cập nhật bản đồ khi position thay đổi
 function MapUpdater({ position }) {
   const map = useMap();
   useEffect(() => {
@@ -31,7 +30,6 @@ function MapUpdater({ position }) {
   return null;
 }
 
-// Component để handle click trên bản đồ
 function MapClickHandler({ setPosition, reverseGeocode }) {
   useMapEvents({
     click(e) {
@@ -57,7 +55,6 @@ export default function PaymentPage() {
     loadCart();
   }, []);
 
-  // Load giỏ hàng mới nhất
   const loadCart = async () => {
     try {
       const token = localStorage.getItem("token");
@@ -73,7 +70,6 @@ export default function PaymentPage() {
       const data = await res.json();
       setCart(data);
 
-      // 🔹 Hiển thị cảnh báo món bị loại
       if (data._sanitized && data._removedItems?.length) {
         data._removedItems.forEach((n) =>
           toast.warning(`Món '${n}' đã bị loại khỏi giỏ vì không còn khả dụng`)
@@ -86,7 +82,6 @@ export default function PaymentPage() {
     }
   };
 
-  // Tìm địa chỉ OpenStreetMap
   const doSearch = useCallback(async (q) => {
     if (!q) return setSuggestions([]);
     try {
@@ -108,7 +103,6 @@ export default function PaymentPage() {
     return () => clearTimeout(timer);
   }, [query, doSearch]);
 
-  // Reverse geocode từ lat/lng
   async function reverseGeocode(lat, lng) {
     try {
       const res = await fetch(
@@ -141,7 +135,6 @@ export default function PaymentPage() {
     }
   };
 
-  // Nhóm items theo nhà hàng
   const groupByRestaurant = () => {
     if (!cart?.items) return [];
 
@@ -172,30 +165,35 @@ export default function PaymentPage() {
     return Object.values(groups);
   };
 
-  // Tạo đơn hàng
+  // ✅ ĐÃ SỬA THEO YÊU CẦU
   const handleCreateOrders = async () => {
     if (!cart?.items?.length) {
       toast.error("Giỏ hàng trống");
       return;
     }
 
-    // ✅ FIX: Kiểm tra địa chỉ giao hàng ngay tại frontend để phản hồi nhanh hơn
     if (!address || !address.trim()) {
       toast.error("Vui lòng chọn hoặc tìm kiếm địa chỉ giao hàng trên bản đồ.");
       return;
     }
 
-    // 🔹 Re-check giỏ hàng trước khi tạo đơn
     try {
       const token = localStorage.getItem("token");
       const res = await fetch("http://localhost:5000/api/cart/latest", {
         headers: { Authorization: `Bearer ${token}` },
       });
       const latest = await res.json();
+
       if (latest._sanitized) {
-        toast.warning(
-          "Giỏ hàng đã được cập nhật do có món không còn khả dụng. Vui lòng kiểm tra lại."
-        );
+        if (Array.isArray(latest._removedItems) && latest._removedItems.length) {
+          latest._removedItems.forEach((name) =>
+            toast.error(`Món ăn '${name}' không còn khả dụng`)
+          );
+        } else {
+          toast.warning(
+            "Giỏ hàng đã được cập nhật do có món không còn khả dụng. Vui lòng kiểm tra lại."
+          );
+        }
         setCart(latest);
         return;
       }
@@ -234,11 +232,11 @@ export default function PaymentPage() {
           body: JSON.stringify(payload),
         });
 
-        // ✅ FIX: Đọc lỗi cụ thể từ backend thay vì ghi đè bằng lỗi chung chung.
         if (!res.ok) {
           const errorData = await res.json();
           throw new Error(errorData.message || "Tạo đơn hàng thất bại.");
         }
+
         const created = await res.json();
 
         if (paymentMethod === "MOMO") {
@@ -264,12 +262,10 @@ export default function PaymentPage() {
             window.location.href = payData.paymentUrl;
             return;
           }
-          // Nếu tạo payment thất bại
           throw new Error("Không thể tạo thanh toán MoMo");
         }
       }
-      
-      // Nếu là COD thì chạy cái này
+
       await clearCartOnServer(cart._id);
       toast.success("Tạo đơn thành công");
       navigate("/orders");

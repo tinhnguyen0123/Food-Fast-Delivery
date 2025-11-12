@@ -242,7 +242,7 @@ export default function Navbar() {
                   </button>
                   {isProfileDropdownOpen && (
                     <div className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-lg border border-gray-200 py-2 z-10 animate-in fade-in slide-in-from-top-2 duration-200">
-                      {!isActive('/profile') && <button onClick={() => safeNavigate('/profile')} className="w-full text-left px-4 py-2 text-gray-700 hover:bg-blue-50 transition-colors text-sm">📝 Xem profile</button>}
+                      {!isActive('/profile') && <button onClick={() => safeNavigate('/profile')} className="w-full text-left px-4 py-2 text-gray-700 hover:bg-blue-50 transition-colors text-sm">📝 Thông tin cá nhân</button>}
                       <button onClick={() => safeNavigate('/orders')} className="w-full text-left px-4 py-2 text-gray-700 hover:bg-blue-50 transition-colors text-sm">📦 Đơn hàng</button>
                       <button onClick={handleLogout} className="w-full text-left px-4 py-2 text-red-600 hover:bg-red-50 transition-colors text-sm">🚪 Đăng xuất</button>
                     </div>

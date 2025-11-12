@@ -2,6 +2,7 @@ import OrderRepository from "../repositories/order.repositories.js";
 import ProductRepository from "../repositories/product.repositories.js";
 import DeliveryRepository from "../repositories/delivery.repositories.js";
 import DroneRepository from "../repositories/drone.repositories.js";
+import RestaurantRepository from "../repositories/restaurant.repositories.js"; // ✅ thêm import
 
 class OrderService {
   // 🔹 Tạo đơn hàng — có thể gồm nhiều nhà hàng
@@ -30,6 +31,21 @@ class OrderService {
         product = await ProductRepository.getProductById(pid);
         if (!product) throw new Error(`Sản phẩm không tồn tại: ${pid}`);
         productCache.set(pid, product);
+      }
+
+      // ✅ Kiểm tra trạng thái món & nhà hàng trước khi tiếp tục
+      if (product.available === false) {
+        throw new Error(`Món ăn '${product.name}' không còn khả dụng`);
+      }
+
+      const restId = product.restaurantId?._id || product.restaurantId;
+      if (!restId) {
+        throw new Error(`Món ăn '${product.name}' không còn khả dụng`);
+      }
+
+      const restaurant = await RestaurantRepository.getRestaurantById(restId);
+      if (!restaurant || restaurant.status !== "verified") {
+        throw new Error(`Nhà hàng của món '${product.name}' hiện không hoạt động`);
       }
 
       const rid =
@@ -99,7 +115,6 @@ class OrderService {
     return await OrderRepository.getAllOrders();
   }
 
-
   async getOrderById(orderId) {
     const order = await OrderRepository.getOrderById(orderId);
     if (!order) throw new Error("Không tìm thấy đơn hàng");
@@ -119,7 +134,6 @@ class OrderService {
   }
 
   async updateOrder(orderId, updateData) {
-    // Lấy thông tin đơn hàng hiện tại
     const existingOrder = await OrderRepository.getOrderById(orderId);
     if (!existingOrder) {
       throw new Error("Không tìm thấy đơn hàng để cập nhật");
@@ -156,7 +170,6 @@ class OrderService {
       throw new Error("Chỉ có thể xác nhận khi đơn đang giao");
     }
 
-    // Cập nhật sang 'completed' — sẽ tự đưa drone về idle
     const updated = await this.updateOrder(orderId, { status: "completed" });
     return updated;
   }

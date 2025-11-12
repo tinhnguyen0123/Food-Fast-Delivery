@@ -1,3 +1,4 @@
+// services/cart.services.js
 import CartRepository from "../repositories/cart.repositories.js";
 import Product from "../models/product.models.js";
 import Restaurant from "../models/restaurant.models.js";
@@ -7,7 +8,7 @@ class CartService {
   async createCart(userId) {
     return await CartRepository.createCart(userId);
   }
-  
+
   // Lấy giỏ hàng mới nhất của user
   async getLatestCartByUser(userId) {
     let cart = await CartRepository.getLatestCartByUser(userId);
@@ -19,17 +20,22 @@ class CartService {
     // ✅ Dọn dẹp giỏ hàng: loại bỏ các sản phẩm không hợp lệ
     const originalItemCount = cart.items.length;
     const removedItems = [];
-    
+
     // Populate đầy đủ để kiểm tra
     await cart.populate({
       path: "items.productId",
       populate: { path: "restaurantId", model: "Restaurant", select: "status" },
     });
 
-    const validItems = cart.items.filter(item => {
+    const validItems = cart.items.filter((item) => {
       const product = item.productId;
-      if (!product || !product.available || !product.restaurantId || product.restaurantId.status !== 'verified') {
-        removedItems.push(product?.name || 'Một món ăn');
+      if (
+        !product ||
+        !product.available ||
+        !product.restaurantId ||
+        product.restaurantId.status !== "verified"
+      ) {
+        removedItems.push(product?.name || "Một món ăn");
         return false;
       }
       return true;
@@ -66,22 +72,37 @@ class CartService {
     return totalPrice;
   }
 
-  // Thêm sản phẩm vào giỏ hàng
+  // 🔹 Thêm sản phẩm vào giỏ hàng
   async addItem(cartId, productId, quantity) {
+    // Validate product tồn tại và available
     const product = await Product.findById(productId);
     if (!product) throw new Error("Sản phẩm không tồn tại");
-    // ✅ Kiểm tra xem sản phẩm có đang "available" không
     if (!product.available) {
       throw new Error("Sản phẩm này hiện không có sẵn để thêm vào giỏ hàng.");
     }
 
-    let cart = await CartRepository.addItem(cartId, productId, quantity);
+    // Lấy giỏ hàng hiện tại để kiểm tra nếu món đã có
+    const cart = await CartRepository.getCartById(cartId);
+    if (!cart) throw new Error("Không tìm thấy giỏ hàng");
+
+    const exists = cart.items.some((item) => {
+      const pid = (item.productId && (item.productId._id || item.productId)).toString();
+      return pid === productId.toString();
+    });
+
+    if (exists) {
+      // Trả lỗi cụ thể để frontend hiển thị thông báo "đã có món"
+      throw new Error(`"${product.name}" đã có trong giỏ`);
+    }
+
+    // Nếu chưa có thì thêm như bình thường
+    let updatedCart = await CartRepository.addItem(cartId, productId, quantity);
 
     // Tính lại tổng tiền
-    const totalPrice = await this.calculateTotalPrice(cart);
+    const totalPrice = await this.calculateTotalPrice(updatedCart);
     await CartRepository.updateTotalPrice(cartId, totalPrice);
 
-    // Trả về giỏ hàng đã được populate đầy đủ
+    // Trả về giỏ hàng đã populate đầy đủ
     return this.getCartById(cartId);
   }
 
