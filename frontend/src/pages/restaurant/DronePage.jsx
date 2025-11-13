@@ -72,17 +72,16 @@ export default function DronesPage() {
       if (!droneRes.ok) throw new Error(droneData.message || "Tải drone thất bại");
       setDrones(Array.isArray(droneData) ? droneData : droneData.drones || []);
 
-      // ✅ Lấy đơn hàng thuộc nhà hàng này và lọc status = preparing
-      let preparing = [];
+      // ✅ Lấy đơn hàng thuộc nhà hàng này và chỉ lấy status = "ready"
       const orderRes = await fetch(`${API_BASE}/api/order/restaurant/${id}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const orderData = await orderRes.json();
       if (!orderRes.ok) throw new Error(orderData.message || "Tải đơn chờ gán thất bại");
-      const orders = Array.isArray(orderData) ? orderData : orderData.orders || [];
-      preparing = orders.filter((o) => o.status === "preparing");
 
-      setPendingOrders(preparing);
+      const orders = Array.isArray(orderData) ? orderData : orderData.orders || [];
+      const ready = orders.filter((o) => o.status === "ready"); // ✅ chỉ lấy "ready"
+      setPendingOrders(ready);
     } catch (e) {
       console.error(e);
       toast.error(e.message || "Lỗi tải dữ liệu");

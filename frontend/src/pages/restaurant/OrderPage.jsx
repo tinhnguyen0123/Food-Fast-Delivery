@@ -17,10 +17,13 @@ const TABS = [
   { key: "all", label: "Tất cả", icon: Package, color: "blue" },
   { key: "pending", label: "Chờ xử lý", icon: Clock, color: "yellow" },
   { key: "preparing", label: "Đang chuẩn bị", icon: ShoppingBag, color: "blue" },
+  { key: "ready", label: "Sẵn sàng", icon: Truck, color: "purple" },
   { key: "delivering", label: "Đang giao", icon: Truck, color: "purple" },
   { key: "completed", label: "Đã giao", icon: CheckCircle, color: "green" },
   { key: "cancelled", label: "Đã hủy", icon: XCircle, color: "red" },
 ];
+
+const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:5000";
 
 export default function OrdersPage() {
   const [orders, setOrders] = useState([]);
@@ -39,7 +42,7 @@ export default function OrdersPage() {
     try {
       const user = JSON.parse(localStorage.getItem("user") || "{}");
       if (!user?.id && !user?._id) throw new Error("Chưa đăng nhập");
-      const res = await fetch(`http://localhost:5000/api/restaurant/owner/${user.id || user._id}`, {
+      const res = await fetch(`${API_BASE}/api/restaurant/owner/${user.id || user._id}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const list = await res.json();
@@ -67,7 +70,7 @@ export default function OrdersPage() {
         setOrders([]);
         return;
       }
-      const res = await fetch(`http://localhost:5000/api/order/restaurant/${rid}`, {
+      const res = await fetch(`${API_BASE}/api/order/restaurant/${rid}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
@@ -102,7 +105,7 @@ export default function OrdersPage() {
 
   const confirmOrder = async (orderId) => {
     try {
-      const res = await fetch(`http://localhost:5000/api/order/${orderId}`, {
+      const res = await fetch(`${API_BASE}/api/order/${orderId}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -122,10 +125,42 @@ export default function OrdersPage() {
 
   const markReady = async (orderId) => {
     try {
-      toast.success("Đơn hàng đã sẵn sàng cho drone nhận");
+      const res = await fetch(`${API_BASE}/api/order/${orderId}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ status: "ready" }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Cập nhật trạng thái thất bại");
+      setOrders((prev) => prev.map((o) => (o._id === orderId ? { ...o, status: "ready" } : o)));
+      toast.success("Đơn đã sẵn sàng");
     } catch (e) {
       console.error(e);
-      toast.error("Lỗi đánh dấu sẵn sàng");
+      toast.error(e.message || "Lỗi cập nhật trạng thái");
+    }
+  };
+
+  const startDelivery = async (order) => {
+    try {
+      if (!order.deliveryId) {
+        toast.error("Đơn chưa được gán drone. Vui lòng gán drone trước.");
+        return;
+      }
+      const res = await fetch(`${API_BASE}/api/drone/start-delivery`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ deliveryId: order.deliveryId }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Không thể bắt đầu giao");
+      setOrders((prev) => prev.map((o) => (o._id === order._id ? { ...o, status: "delivering" } : o)));
+      toast.success("Đã bắt đầu giao");
+    } catch (e) {
+      console.error(e);
+      toast.error(e.message || "Lỗi bắt đầu giao");
     }
   };
 
@@ -133,7 +168,7 @@ export default function OrdersPage() {
     if (!window.confirm("Bạn có chắc muốn hủy đơn hàng này?")) return;
 
     try {
-      const res = await fetch(`http://localhost:5000/api/order/${orderId}`, {
+      const res = await fetch(`${API_BASE}/api/order/${orderId}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -151,30 +186,11 @@ export default function OrdersPage() {
     }
   };
 
-  const updateStatus = async (orderId, status) => {
-    try {
-      const res = await fetch(`http://localhost:5000/api/order/${orderId}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ status }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || "Cập nhật trạng thái thất bại");
-      setOrders((prev) => prev.map((o) => (o._id === orderId ? { ...o, status } : o)));
-      toast.success("Đã cập nhật trạng thái");
-    } catch (e) {
-      console.error(e);
-      toast.error(e.message || "Lỗi cập nhật trạng thái");
-    }
-  };
-
   const getStatusBadge = (status) => {
     const badges = {
       pending: { color: "bg-yellow-100 text-yellow-700 border-yellow-200", icon: Clock, text: "Chờ xử lý" },
       preparing: { color: "bg-blue-100 text-blue-700 border-blue-200", icon: ShoppingBag, text: "Đang chuẩn bị" },
+      ready: { color: "bg-purple-100 text-purple-700 border-purple-200", icon: Truck, text: "Sẵn sàng" },
       delivering: { color: "bg-purple-100 text-purple-700 border-purple-200", icon: Truck, text: "Đang giao" },
       completed: { color: "bg-green-100 text-green-700 border-green-200", icon: CheckCircle, text: "Đã giao" },
       cancelled: { color: "bg-red-100 text-red-700 border-red-200", icon: XCircle, text: "Đã hủy" },
@@ -356,36 +372,29 @@ export default function OrdersPage() {
                   <div className="flex flex-wrap gap-2">
                     {/* Pending actions */}
                     {order.status === "pending" && (
-                      <>
-                        <button onClick={() => confirmOrder(order._id)} className="flex-1 sm:flex-none bg-gradient-to-r from-green-600 to-emerald-600 text-white px-6 py-2.5 rounded-lg font-semibold hover:shadow-lg transition-all flex items-center justify-center gap-2">
-                          <CheckCircle className="w-5 h-5" /> Xác nhận đơn
-                        </button>
-
-                        <button onClick={() => markReady(order._id)} className="flex-1 sm:flex-none bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-2.5 rounded-lg font-semibold hover:shadow-lg transition-all flex items-center justify-center gap-2">
-                          <Truck className="w-5 h-5" /> Sẵn sàng
-                        </button>
-
-                        <button onClick={() => cancelOrder(order._id)} className="flex-1 sm:flex-none bg-red-600 text-white px-6 py-2.5 rounded-lg font-semibold hover:bg-red-700 transition-all flex items-center justify-center gap-2">
-                          <XCircle className="w-5 h-5" /> Hủy đơn
-                        </button>
-                      </>
+                      <button onClick={() => confirmOrder(order._id)} className="flex-1 sm:flex-none bg-gradient-to-r from-green-600 to-emerald-600 text-white px-6 py-2.5 rounded-lg font-semibold hover:shadow-lg transition-all flex items-center justify-center gap-2">
+                        <CheckCircle className="w-5 h-5" /> Xác nhận đơn
+                      </button>
                     )}
 
-                    {/* Các nút cho trạng thái không phải pending, completed, cancelled */}
-                    {order.status !== "pending" && order.status !== "completed" && order.status !== "cancelled" && (
-                      <div className="flex flex-wrap gap-2 w-full">
-                        {order.status === "preparing" && (
-                          <button onClick={() => updateStatus(order._id, "delivering")} className="flex-1 sm:flex-none bg-purple-600 text-white px-6 py-2.5 rounded-lg font-semibold hover:bg-purple-700 transition-all flex items-center justify-center gap-2">
-                            <Truck className="w-5 h-5" /> Bắt đầu giao
-                          </button>
-                        )}
+                    {/* Preparing actions */}
+                    {order.status === "preparing" && (
+                      <button onClick={() => markReady(order._id)} className="flex-1 sm:flex-none bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-2.5 rounded-lg font-semibold hover:shadow-lg transition-all flex items-center justify-center gap-2">
+                        <Truck className="w-5 h-5" /> Sẵn sàng
+                      </button>
+                    )}
 
-                        {(order.status === "preparing" || order.status === "delivering") && (
-                          <button onClick={() => cancelOrder(order._id)} className="flex-1 sm:flex-none bg-red-600 text-white px-6 py-2.5 rounded-lg font-semibold hover:bg-red-700 transition-all flex items-center justify-center gap-2">
-                            <XCircle className="w-5 h-5" /> Hủy đơn
-                          </button>
-                        )}
-                      </div>
+                    {/* Ready actions */}
+                    {order.status === "ready" && (
+                      order.deliveryId ? (
+                        <button onClick={() => startDelivery(order)} className="flex-1 sm:flex-none bg-purple-600 text-white px-6 py-2.5 rounded-lg font-semibold hover:bg-purple-700 transition-all flex items-center justify-center gap-2">
+                          <Truck className="w-5 h-5" /> Bắt đầu giao
+                        </button>
+                      ) : (
+                        <span className="text-sm text-gray-600 bg-gray-100 px-3 py-2 rounded-lg">
+                          Đơn đã sẵn sàng. Vui lòng qua trang Drone để gán drone.
+                        </span>
+                      )
                     )}
 
                     {/* Completed / Cancelled status */}

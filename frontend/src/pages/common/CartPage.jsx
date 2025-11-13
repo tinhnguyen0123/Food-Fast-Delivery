@@ -3,6 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import { ArrowLeft } from "lucide-react";
 
+const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:5000";
+
 export default function CartPage() {
   const navigate = useNavigate();
   const [cart, setCart] = useState(null);
@@ -22,7 +24,7 @@ export default function CartPage() {
         return;
       }
 
-      const res = await fetch("http://localhost:5000/api/cart/latest", {
+      const res = await fetch(`${API_BASE}/api/cart/latest`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -61,27 +63,34 @@ export default function CartPage() {
   };
 
   const handleUpdateQuantity = async (productId, newQuantity) => {
-    if (newQuantity < 1) return;
+    // ✅ Cho phép giảm về 0 -> xóa món
+    if (newQuantity <= 0) {
+      await handleRemoveItem(productId);
+      return;
+    }
 
     const previousCart = { ...cart };
+    const idOf = (it) =>
+      ((it.productId && (it.productId._id || it.productId)) || "").toString();
+
+    // Optimistic update
     setCart((prevCart) => {
-      const newItems = prevCart.items.map((item) =>
-        item.productId._id === productId
-          ? { ...item, quantity: newQuantity }
-          : item
+      const newItems = (prevCart.items || []).map((item) =>
+        idOf(item) === productId.toString() ? { ...item, quantity: newQuantity } : item
       );
       const newTotal = newItems.reduce(
-        (sum, item) => sum + Number(item.productId.price) * item.quantity,
+        (sum, item) =>
+          sum +
+          Number(item.productId.price || item.priceAtOrderTime || 0) * item.quantity,
         0
       );
       return { ...prevCart, items: newItems, totalPrice: newTotal };
     });
 
     setUpdating(true);
-
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch("http://localhost:5000/api/cart/add", {
+      const res = await fetch(`${API_BASE}/api/cart/add`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -98,15 +107,13 @@ export default function CartPage() {
 
       const updatedCart = await res.json();
       setCart(updatedCart);
-      toast.success("Cập nhật số lượng thành công");
 
       if (updatedCart._sanitized && Array.isArray(updatedCart._removedItems)) {
         updatedCart._removedItems.forEach((name) =>
-          toast.warning(
-            `Món '${name}' đã bị xóa vì nhà hàng không còn khả dụng`
-          )
+          toast.warning(`Món '${name}' đã bị xóa vì nhà hàng không còn khả dụng`)
         );
       }
+      toast.success("Cập nhật số lượng thành công");
     } catch (err) {
       setCart(previousCart);
       console.error("Update quantity error:", err);
@@ -118,7 +125,6 @@ export default function CartPage() {
 
   const handleRemoveItem = async (productId) => {
     const previousCart = { ...cart };
-
     const idOf = (it) =>
       ((it.productId && (it.productId._id || it.productId)) || "").toString();
 
@@ -128,17 +134,15 @@ export default function CartPage() {
     const newTotal = newItems.reduce(
       (sum, item) =>
         sum +
-        Number(item.productId.price || item.priceAtOrderTime || 0) *
-          item.quantity,
+        Number(item.productId.price || item.priceAtOrderTime || 0) * item.quantity,
       0
     );
     setCart({ ...cart, items: newItems, totalPrice: newTotal });
 
     setUpdating(true);
-
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch("http://localhost:5000/api/cart/remove", {
+      const res = await fetch(`${API_BASE}/api/cart/remove`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -163,14 +167,13 @@ export default function CartPage() {
     }
   };
 
-  // Thêm hàm xóa tất cả món
   const handleClearCart = async () => {
     if (!cart || !cart._id) return;
     const previousCart = { ...cart };
     setUpdating(true);
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch(`http://localhost:5000/api/cart/${cart._id}`, {
+      const res = await fetch(`${API_BASE}/api/cart/${cart._id}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
       });

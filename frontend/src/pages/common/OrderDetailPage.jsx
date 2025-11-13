@@ -107,10 +107,30 @@ export default function OrderDetailPage() {
         if (!res.ok) return;
         const data = await res.json();
         if (!mounted) return;
+
         setDelivery(data);
         const dLoc = data?.droneId?.currentLocationId?.coords;
         setDronePos(dLoc || null);
-      } catch {}
+
+        // Khi drone đến nơi, đồng bộ lại order để kích hoạt nút xác nhận
+        if (data?.status === "arrived") {
+          try {
+            const r2 = await fetch(`${API_BASE}/api/order/${id}`, {
+              headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+            });
+            if (r2.ok) {
+              const fresh = await r2.json();
+              setOrder(fresh);
+            } else {
+              setOrder((prev) => (prev ? { ...prev, status: "delivering" } : prev));
+            }
+          } catch {
+            setOrder((prev) => (prev ? { ...prev, status: "delivering" } : prev));
+          }
+        }
+      } catch {
+        // ignore
+      }
     };
 
     pollDelivery();
@@ -144,11 +164,17 @@ export default function OrderDetailPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Xác nhận thất bại");
+
+      // Cập nhật trạng thái local để ẩn nút ngay
       setOrder((prev) => ({ ...prev, status: "completed" }));
-      toast.success("Đã xác nhận hoàn thành đơn hàng");
+      setDelivery((prev) => (prev ? { ...prev, status: "completed" } : prev));
+
+      // Dọn thông báo liên quan
       const list = JSON.parse(localStorage.getItem("notifQueue") || "[]");
       const filtered = list.filter((n) => n.orderId !== order._id);
       localStorage.setItem("notifQueue", JSON.stringify(filtered));
+
+      toast.success("Đã xác nhận hoàn thành đơn hàng");
     } catch (e) {
       console.error(e);
       toast.error(e.message || "Lỗi xác nhận");
@@ -157,33 +183,35 @@ export default function OrderDetailPage() {
     }
   };
 
-  if (loading) return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50">
-      <div className="text-center">
-        <div className="animate-spin h-12 w-12 border-4 border-blue-600 border-t-transparent rounded-full mx-auto mb-4" />
-        <p className="text-gray-600 font-medium">Đang tải thông tin đơn hàng...</p>
-      </div>
-    </div>
-  );
-
-  if (!order) return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 p-4">
-      <div className="text-center bg-white rounded-2xl shadow-lg p-12">
-        <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-          <Package className="w-10 h-10 text-gray-400" />
+  if (loading)
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50">
+        <div className="text-center">
+          <div className="animate-spin h-12 w-12 border-4 border-blue-600 border-t-transparent rounded-full mx-auto mb-4" />
+          <p className="text-gray-600 font-medium">Đang tải thông tin đơn hàng...</p>
         </div>
-        <h2 className="text-2xl font-bold text-gray-800 mb-2">Không tìm thấy đơn hàng</h2>
-        <p className="text-gray-600 mb-6">Đơn hàng không tồn tại hoặc đã bị xóa</p>
-        <button
-          onClick={() => navigate("/orders")}
-          className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-3 rounded-xl hover:shadow-lg inline-flex items-center gap-2"
-        >
-          <ArrowLeft className="w-5 h-5" />
-          Quay lại danh sách đơn hàng
-        </button>
       </div>
-    </div>
-  );
+    );
+
+  if (!order)
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 p-4">
+        <div className="text-center bg-white rounded-2xl shadow-lg p-12">
+          <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <Package className="w-10 h-10 text-gray-400" />
+          </div>
+          <h2 className="text-2xl font-bold text-gray-800 mb-2">Không tìm thấy đơn hàng</h2>
+          <p className="text-gray-600 mb-6">Đơn hàng không tồn tại hoặc đã bị xóa</p>
+          <button
+            onClick={() => navigate("/orders")}
+            className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-3 rounded-xl hover:shadow-lg inline-flex items-center gap-2"
+          >
+            <ArrowLeft className="w-5 h-5" />
+            Quay lại danh sách đơn hàng
+          </button>
+        </div>
+      </div>
+    );
 
   const statusConfig = getStatusConfig(order.status);
   const StatusIcon = statusConfig.icon;
@@ -266,10 +294,7 @@ export default function OrderDetailPage() {
                 </h3>
                 <div className="h-72 rounded-xl overflow-hidden border mt-2">
                   <MapContainer
-                    center={[
-                      dronePos?.lat || cC?.lat || rC?.lat || 21.0278,
-                      dronePos?.lng || cC?.lng || rC?.lng || 105.8342,
-                    ]}
+                    center={[dronePos?.lat || cC?.lat || rC?.lat || 21.0278, dronePos?.lng || cC?.lng || rC?.lng || 105.8342]}
                     zoom={13}
                     style={{ height: "100%", width: "100%" }}
                   >
@@ -377,7 +402,7 @@ export default function OrderDetailPage() {
             </div>
 
             {/* Confirm button */}
-            {order.status === "delivering" && (
+            {order?.status !== "completed" && (order?.status === "delivering" || delivery?.status === "arrived") && (
               <div className="mt-8 flex justify-center">
                 <button
                   disabled={confirming}
@@ -389,7 +414,6 @@ export default function OrderDetailPage() {
                 </button>
               </div>
             )}
-
           </div>
         </div>
       </div>

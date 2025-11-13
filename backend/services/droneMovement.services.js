@@ -20,7 +20,7 @@ class DroneMovementService {
     return route;
   }
 
-  // Bắt đầu di chuyển drone theo delivery
+  // ✅ Bắt đầu di chuyển drone theo delivery
   async startMovement(deliveryId) {
     try {
       const delivery = await DeliveryRepository.getDeliveryById(deliveryId);
@@ -35,9 +35,7 @@ class DroneMovementService {
         return;
       }
 
-      // ✅ Tạo đường thẳng
       const route = this.createStraightRoute(pickup, dropoff, 20);
-
       if (route.length === 0) {
         console.warn("No route created for delivery", deliveryId);
         return;
@@ -48,7 +46,7 @@ class DroneMovementService {
 
       let currentIndex = 0;
       const totalSteps = route.length;
-      const intervalMs = 3000; // cập nhật mỗi 3s
+      const intervalMs = 3000;
 
       console.log(`🚁 Drone ${drone.code} bắt đầu bay thẳng với ${totalSteps} điểm`);
 
@@ -57,17 +55,13 @@ class DroneMovementService {
           if (currentIndex >= totalSteps) {
             await this.stopMovement(drone._id);
 
-            // ✅ Cập nhật delivery status = "arrived"
-            await DeliveryRepository.updateDelivery(delivery._id, {
-              status: "arrived",
-            });
-
-            // ✅ Cập nhật order để frontend biết drone đã tới
-            await OrderRepository.updateOrder(delivery.orderId, {
-              arrivedNotified: true,
-            });
-
+            // ✅ Đã đến điểm giao
+            await DeliveryRepository.updateDelivery(delivery._id, { status: "arrived" });
+            await OrderRepository.updateOrder(delivery.orderId, { arrivedNotified: true });
             console.log(`✅ Drone ${drone.code} đã đến đích`);
+
+            // ✅ Tự động quay về nhà hàng
+            await this.startReturnToBase(delivery);
             return;
           }
 
@@ -75,27 +69,23 @@ class DroneMovementService {
           let locationId = drone.currentLocationId?._id || drone.currentLocationId;
 
           if (locationId) {
-            // Cập nhật vị trí hiện tại
             await LocationRepository.updateLocation(locationId, {
               coords: { lat: currentPos.lat, lng: currentPos.lng },
             });
           } else {
-            // Tạo location mới
             const newLoc = await LocationRepository.createLocation({
               type: "drone",
               coords: { lat: currentPos.lat, lng: currentPos.lng },
               address: `Drone ${drone.code} position`,
             });
             locationId = newLoc._id;
-            await DroneRepository.updateDrone(drone._id, {
-              currentLocationId: locationId,
-            });
+            await DroneRepository.updateDrone(drone._id, { currentLocationId: locationId });
           }
 
           console.log(
-            `🚁 Drone ${drone.code} tại [${currentPos.lat.toFixed(
+            `🚁 Drone ${drone.code} tại [${currentPos.lat.toFixed(5)}, ${currentPos.lng.toFixed(
               5
-            )}, ${currentPos.lng.toFixed(5)}] (${currentIndex + 1}/${totalSteps})`
+            )}] (${currentIndex + 1}/${totalSteps})`
           );
 
           currentIndex++;
@@ -110,7 +100,88 @@ class DroneMovementService {
     }
   }
 
-  // Dừng di chuyển drone
+  // ✅ Quay về nhà hàng sau khi giao (dropoff -> pickup)
+  async startReturnToBase(delivery) {
+    try {
+      const drone = delivery.droneId;
+      const pickup = delivery.pickupLocationId?.coords;
+      const dropoff = delivery.dropoffLocationId?.coords;
+      if (!pickup || !dropoff) return;
+
+      const routeBack = this.createStraightRoute(dropoff, pickup, 20);
+      if (routeBack.length === 0) return;
+
+      // Dừng movement cũ nếu có
+      this.stopMovement(drone._id);
+
+      let idx = 0;
+      const total = routeBack.length;
+      const intervalMs = 3000;
+
+      console.log(`↩️ Drone ${drone.code} quay về nhà hàng với ${total} điểm`);
+
+      const interval = setInterval(async () => {
+        try {
+          if (idx >= total) {
+            await this.stopMovement(drone._id);
+
+            // Cập nhật vị trí cuối cùng về nhà hàng
+            let locationId = drone.currentLocationId?._id || drone.currentLocationId;
+            if (locationId) {
+              await LocationRepository.updateLocation(locationId, {
+                coords: { lat: pickup.lat, lng: pickup.lng },
+              });
+            } else {
+              const newLoc = await LocationRepository.createLocation({
+                type: "drone",
+                coords: { lat: pickup.lat, lng: pickup.lng },
+                address: `Drone ${drone.code} at restaurant`,
+              });
+              locationId = newLoc._id;
+              await DroneRepository.updateDrone(drone._id, { currentLocationId: locationId });
+            }
+
+            // ✅ Cho phép drone nhận đơn tiếp theo
+            await DroneRepository.updateDrone(drone._id, { status: "idle" });
+            console.log(`🏠 Drone ${drone.code} đã về nhà hàng và sẵn sàng`);
+            return;
+          }
+
+          const pos = routeBack[idx];
+          let locationId = drone.currentLocationId?._id || drone.currentLocationId;
+          if (locationId) {
+            await LocationRepository.updateLocation(locationId, {
+              coords: { lat: pos.lat, lng: pos.lng },
+            });
+          } else {
+            const newLoc = await LocationRepository.createLocation({
+              type: "drone",
+              coords: { lat: pos.lat, lng: pos.lng },
+              address: `Drone ${drone.code} returning`,
+            });
+            locationId = newLoc._id;
+            await DroneRepository.updateDrone(drone._id, { currentLocationId: locationId });
+          }
+
+          console.log(
+            `↩️ Drone ${drone.code} về nhà hàng tại [${pos.lat.toFixed(5)}, ${pos.lng.toFixed(
+              5
+            )}] (${idx + 1}/${total})`
+          );
+
+          idx++;
+        } catch (err) {
+          console.error("Return interval error:", err);
+        }
+      }, intervalMs);
+
+      this.activeMovements.set(drone._id.toString(), interval);
+    } catch (e) {
+      console.error("startReturnToBase error:", e);
+    }
+  }
+
+  // ✅ Dừng di chuyển drone
   stopMovement(droneId) {
     const key = droneId.toString();
     if (this.activeMovements.has(key)) {
@@ -120,7 +191,7 @@ class DroneMovementService {
     }
   }
 
-  // Dừng tất cả movement (khi server shutdown)
+  // ✅ Dừng tất cả movement (khi server shutdown)
   stopAll() {
     for (const [id, interval] of this.activeMovements) {
       clearInterval(interval);

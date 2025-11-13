@@ -57,14 +57,15 @@ class DroneService {
     return deleted;
   }
 
-  // ✅ Gán drone cho đơn hàng và khởi chạy di chuyển
+  // ✅ Gán drone cho đơn hàng nhưng CHƯA bay
   async assignDrone(droneId, orderId) {
     if (!droneId || !orderId) throw new Error("Thiếu droneId hoặc orderId");
 
     const order = await OrderRepository.getOrderById(orderId);
     if (!order) throw new Error("Đơn hàng không tồn tại");
-    if (order.status !== "preparing") {
-      throw new Error("Chỉ có thể gán drone khi đơn đang chuẩn bị");
+
+    if (order.status !== "ready") {
+      throw new Error("Chỉ có thể gán drone khi đơn ở trạng thái 'ready'");
     }
 
     const drone = await DroneRepository.getDroneById(droneId);
@@ -90,41 +91,57 @@ class DroneService {
       dropoffLocId = createdDrop?._id;
     }
 
+    // Tạo delivery trạng thái "waiting"
     const delivery = await DeliveryRepository.createDelivery({
       orderId: order._id,
       droneId: drone._id,
       pickupLocationId: pickupLocId || undefined,
       dropoffLocationId: dropoffLocId || undefined,
-      status: "on_the_way",
-      startedAt: new Date(),
+      status: "waiting",
+      startedAt: null,
     });
 
-    await OrderRepository.updateOrder(order._id, {
-      status: "delivering",
-      deliveryId: delivery._id,
-    });
+    // Ghi deliveryId vào order, giữ nguyên trạng thái "ready"
+    await OrderRepository.updateOrder(order._id, { deliveryId: delivery._id });
 
-    const updateDronePayload = { status: "delivering" };
-    if (!drone.currentLocationId && pickupLocId) {
-      updateDronePayload.currentLocationId = pickupLocId;
-    }
-    const updatedDrone = await DroneRepository.updateDrone(drone._id, updateDronePayload);
+    // KHÔNG đổi trạng thái drone, giữ nguyên drone
+    return { delivery, orderId: order._id, drone };
+  }
 
-    // ✅ Bắt đầu di chuyển drone theo delivery route
+  // ✅ Bắt đầu giao: chuyển trạng thái và khởi động drone
+  async startDelivery(deliveryId) {
+    if (!deliveryId) throw new Error("Thiếu deliveryId");
+
+    const delivery = await DeliveryRepository.getDeliveryById(deliveryId);
+    if (!delivery) throw new Error("Không tìm thấy delivery");
+    if (!delivery.droneId) throw new Error("Delivery chưa có drone");
+
+    const order = await OrderRepository.getOrderById(delivery.orderId);
+    if (!order) throw new Error("Không tìm thấy đơn hàng");
+    if (order.status !== "ready") throw new Error("Chỉ bắt đầu giao khi đơn ở trạng thái 'ready'");
+
+    // Cập nhật trạng thái: drone -> delivering, delivery -> on_the_way, order -> delivering
+    await DroneRepository.updateDrone(delivery.droneId, { status: "delivering" });
+    await DeliveryRepository.updateDelivery(delivery._id, { status: "on_the_way", startedAt: new Date() });
+    await OrderRepository.updateOrder(order._id, { status: "delivering" });
+
+    // Khởi động di chuyển
     setImmediate(() => {
       DroneMovementService.startMovement(delivery._id).catch((err) =>
         console.error("Failed to start drone movement:", err)
       );
     });
 
-    return { delivery, orderId: order._id, drone: updatedDrone };
+    return { message: "Delivery started" };
   }
 
+  // ✅ Tự động gán tất cả drone idle cho các đơn "ready"
   async autoAssignForRestaurant(restaurantId) {
     if (!restaurantId) throw new Error("Thiếu restaurantId");
 
+    // Lọc đơn trạng thái "ready" thay vì "preparing"
     const orders = await OrderRepository.getOrdersByRestaurant(restaurantId);
-    const waiting = orders.filter((o) => o.status === "preparing");
+    const waiting = orders.filter((o) => o.status === "ready");
 
     const idleDrones = await this.getDronesByRestaurant(restaurantId)
       .then((list) => list.filter((d) => d.status === "idle"));
