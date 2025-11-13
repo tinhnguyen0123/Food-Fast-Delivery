@@ -13,7 +13,30 @@ import {
   Camera,
   CheckCircle,
   AlertCircle,
+  Search,
+  Navigation,
 } from "lucide-react";
+import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from "react-leaflet";
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
+import iconRetinaUrl from "leaflet/dist/images/marker-icon-2x.png";
+import iconUrl from "leaflet/dist/images/marker-icon.png";
+import shadowUrl from "leaflet/dist/images/marker-shadow.png";
+
+// Fix leaflet default icon
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({ iconRetinaUrl, iconUrl, shadowUrl });
+
+// Component cập nhật view map khi position thay đổi
+function MapUpdater({ position }) {
+  const map = useMap();
+  useEffect(() => {
+    if (position) {
+      map.setView([position.lat, position.lng], 13);
+    }
+  }, [position, map]);
+  return null;
+}
 
 export default function ProfilePage({ onUpdate }) {
   const [loading, setLoading] = useState(true);
@@ -32,9 +55,13 @@ export default function ProfilePage({ onUpdate }) {
   const [imagePreview, setImagePreview] = useState(null);
   const [rid, setRid] = useState(localStorage.getItem("myRestaurantId") || "");
 
+  // ✅ Map state
+  const [position, setPosition] = useState({ lat: 21.0278, lng: 105.8342 });
+  const [query, setQuery] = useState("");
+  const [suggestions, setSuggestions] = useState([]);
+
   const token = localStorage.getItem("token");
 
-  // ✅ Lấy hoặc lưu lại ID nhà hàng
   const ensureRestaurantId = async () => {
     if (rid) return rid;
     const cached = localStorage.getItem("myRestaurantId");
@@ -62,7 +89,6 @@ export default function ProfilePage({ onUpdate }) {
     }
   };
 
-  // ✅ Tải hồ sơ nhà hàng
   const loadProfile = async () => {
     setLoading(true);
     try {
@@ -90,6 +116,14 @@ export default function ProfilePage({ onUpdate }) {
         _id: data._id,
       });
       setImagePreview(data.image || null);
+
+      // ✅ Load vị trí từ locationId
+      if (data.locationId?.coords) {
+        setPosition({
+          lat: data.locationId.coords.lat,
+          lng: data.locationId.coords.lng,
+        });
+      }
     } catch (e) {
       console.error(e);
       toast.error(e.message || "Lỗi tải hồ sơ");
@@ -102,7 +136,6 @@ export default function ProfilePage({ onUpdate }) {
     loadProfile();
   }, []);
 
-  // ✅ Xử lý thay đổi ảnh
   const handleImageChange = (e) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -111,7 +144,59 @@ export default function ProfilePage({ onUpdate }) {
     }
   };
 
-  // ✅ Lưu thay đổi, gọi onUpdate nếu là function
+  // ✅ Tìm kiếm địa chỉ qua Nominatim
+  const doSearch = async (q) => {
+    if (!q) return setSuggestions([]);
+    try {
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
+          q
+        )}&addressdetails=1&limit=5`
+      );
+      const list = await res.json();
+      setSuggestions(list || []);
+    } catch {
+      setSuggestions([]);
+    }
+  };
+
+  useEffect(() => {
+    const timer = setTimeout(() => doSearch(query), 500);
+    return () => clearTimeout(timer);
+  }, [query]);
+
+  async function reverseGeocode(lat, lng) {
+    try {
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`
+      );
+      const j = await res.json();
+      setRestaurant((p) => ({ ...p, address: j.display_name || p.address }));
+    } catch (e) {
+      console.error("Reverse geocode error", e);
+    }
+  }
+
+  function MapClickHandler() {
+    useMapEvents({
+      click(e) {
+        setPosition(e.latlng);
+        reverseGeocode(e.latlng.lat, e.latlng.lng);
+      },
+    });
+    return null;
+  }
+
+  const selectSuggestion = (s) => {
+    const lat = parseFloat(s.lat);
+    const lng = parseFloat(s.lon);
+    setPosition({ lat, lng });
+    setRestaurant((p) => ({ ...p, address: s.display_name }));
+    setSuggestions([]);
+    setQuery("");
+  };
+
+  // ✅ Lưu thay đổi (bao gồm cả cập nhật location)
   const onSave = async () => {
     if (!restaurant._id) {
       toast.info("Chưa có hồ sơ nhà hàng để lưu");
@@ -119,6 +204,27 @@ export default function ProfilePage({ onUpdate }) {
     }
     setSaving(true);
     try {
+      // 1) Cập nhật location (nếu đã có locationId)
+      const resRestaurant = await fetch(`http://localhost:5000/api/restaurant/${restaurant._id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const currentData = await resRestaurant.json();
+
+      if (currentData.locationId?._id) {
+        await fetch(`http://localhost:5000/api/location/${currentData.locationId._id}`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            coords: { lat: position.lat, lng: position.lng },
+            address: restaurant.address,
+          }),
+        });
+      }
+
+      // 2) Cập nhật restaurant
       const fd = new FormData();
       fd.append("name", restaurant.name);
       fd.append("description", restaurant.description);
@@ -129,21 +235,17 @@ export default function ProfilePage({ onUpdate }) {
       fd.append("maxDeliveryDistance", restaurant.maxDeliveryDistance);
       if (imageFile) fd.append("image", imageFile);
 
-      const res = await fetch(
-        `http://localhost:5000/api/restaurant/${restaurant._id}`,
-        {
-          method: "PUT",
-          headers: { Authorization: `Bearer ${token}` },
-          body: fd,
-        }
-      );
+      const res = await fetch(`http://localhost:5000/api/restaurant/${restaurant._id}`, {
+        method: "PUT",
+        headers: { Authorization: `Bearer ${token}` },
+        body: fd,
+      });
 
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Lưu thất bại");
 
-      toast.success(" Đã lưu thay đổi");
+      toast.success("✅ Đã lưu thay đổi");
 
-      // ✅ Chỉ gọi onUpdate nếu là function
       if (typeof onUpdate === "function") {
         onUpdate(restaurant.name);
       }
@@ -178,9 +280,7 @@ export default function ProfilePage({ onUpdate }) {
             <Store className="w-7 h-7 text-orange-600" />
             Hồ sơ nhà hàng
           </h1>
-          <p className="text-gray-600 mt-1">
-            Cập nhật thông tin hiển thị cho khách hàng
-          </p>
+          <p className="text-gray-600 mt-1">Cập nhật thông tin hiển thị cho khách hàng</p>
         </div>
 
         <button
@@ -208,12 +308,9 @@ export default function ProfilePage({ onUpdate }) {
           <div className="flex items-start gap-3">
             <AlertCircle className="w-5 h-5 text-yellow-600 mt-0.5" />
             <div>
-              <h3 className="font-semibold text-yellow-800">
-                Chưa có hồ sơ nhà hàng
-              </h3>
+              <h3 className="font-semibold text-yellow-800">Chưa có hồ sơ nhà hàng</h3>
               <p className="text-yellow-700 text-sm mt-1">
-                Tài khoản của bạn chưa có nhà hàng nào. Vui lòng liên hệ quản trị
-                viên để đăng ký.
+                Tài khoản của bạn chưa có nhà hàng nào. Vui lòng liên hệ quản trị viên để đăng ký.
               </p>
             </div>
           </div>
@@ -223,9 +320,7 @@ export default function ProfilePage({ onUpdate }) {
           <div className="flex items-start gap-3">
             <CheckCircle className="w-5 h-5 text-green-600 mt-0.5" />
             <div>
-              <h3 className="font-semibold text-green-800">
-                Hồ sơ đã được kích hoạt
-              </h3>
+              <h3 className="font-semibold text-green-800">Hồ sơ đã được kích hoạt</h3>
               <p className="text-green-700 text-sm mt-1">
                 Nhà hàng của bạn đang hoạt động và hiển thị cho khách hàng.
               </p>
@@ -238,7 +333,6 @@ export default function ProfilePage({ onUpdate }) {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left Column - Image */}
         <div className="lg:col-span-1 space-y-6">
-          {/* Restaurant Image Card */}
           <div className="bg-white rounded-xl shadow-lg p-6">
             <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
               <Camera className="w-5 h-5 text-orange-600" />
@@ -248,11 +342,7 @@ export default function ProfilePage({ onUpdate }) {
             <div className="space-y-4">
               <div className="relative w-full aspect-square rounded-xl overflow-hidden border-2 border-gray-200 bg-gradient-to-br from-orange-50 to-red-50">
                 {imagePreview ? (
-                  <img
-                    src={imagePreview}
-                    alt="Restaurant"
-                    className="w-full h-full object-cover"
-                  />
+                  <img src={imagePreview} alt="Restaurant" className="w-full h-full object-cover" />
                 ) : (
                   <div className="w-full h-full flex flex-col items-center justify-center text-gray-400">
                     <Store className="w-16 h-16 mb-2" />
@@ -264,25 +354,16 @@ export default function ProfilePage({ onUpdate }) {
               <label className="flex items-center justify-center gap-2 w-full px-4 py-3 bg-gradient-to-r from-orange-100 to-red-100 text-orange-700 rounded-lg cursor-pointer hover:from-orange-200 hover:to-red-200 transition-all font-semibold">
                 <Upload className="w-4 h-4" />
                 Chọn ảnh mới
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleImageChange}
-                  className="hidden"
-                />
+                <input type="file" accept="image/*" onChange={handleImageChange} className="hidden" />
               </label>
 
-              <p className="text-xs text-gray-500 text-center">
-                JPG, PNG hoặc GIF (Max. 5MB)
-              </p>
+              <p className="text-xs text-gray-500 text-center">JPG, PNG hoặc GIF (Max. 5MB)</p>
             </div>
           </div>
 
           {/* Quick Stats */}
           <div className="bg-white rounded-xl shadow-lg p-6">
-            <h3 className="text-lg font-bold text-gray-800 mb-4">
-              Thống kê nhanh
-            </h3>
+            <h3 className="text-lg font-bold text-gray-800 mb-4">Thống kê nhanh</h3>
             <div className="space-y-3">
               <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
                 <span className="text-sm text-gray-600">Đơn tối thiểu</span>
@@ -298,9 +379,7 @@ export default function ProfilePage({ onUpdate }) {
               </div>
               <div className="flex items-center justify-between p-3 bg-orange-50 rounded-lg">
                 <span className="text-sm text-gray-600">Bán kính giao</span>
-                <span className="font-bold text-orange-600">
-                  {restaurant.maxDeliveryDistance || 0} km
-                </span>
+                <span className="font-bold text-orange-600">{restaurant.maxDeliveryDistance || 0} km</span>
               </div>
             </div>
           </div>
@@ -316,7 +395,6 @@ export default function ProfilePage({ onUpdate }) {
             </h3>
 
             <div className="space-y-4">
-              {/* Restaurant Name */}
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
                   Tên nhà hàng <span className="text-red-500">*</span>
@@ -328,30 +406,22 @@ export default function ProfilePage({ onUpdate }) {
                     className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                     placeholder="VD: Nhà hàng ABC"
                     value={restaurant.name}
-                    onChange={(e) =>
-                      setRestaurant((p) => ({ ...p, name: e.target.value }))
-                    }
+                    onChange={(e) => setRestaurant((p) => ({ ...p, name: e.target.value }))}
                   />
                 </div>
               </div>
 
-              {/* Description */}
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Mô tả nhà hàng
-                </label>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Mô tả nhà hàng</label>
                 <textarea
                   rows={4}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent resize-none"
                   placeholder="Giới thiệu về nhà hàng của bạn..."
                   value={restaurant.description}
-                  onChange={(e) =>
-                    setRestaurant((p) => ({ ...p, description: e.target.value }))
-                  }
+                  onChange={(e) => setRestaurant((p) => ({ ...p, description: e.target.value }))}
                 />
               </div>
 
-              {/* Phone & Address */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">
@@ -364,30 +434,81 @@ export default function ProfilePage({ onUpdate }) {
                       className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                       placeholder="0123456789"
                       value={restaurant.phone}
-                      onChange={(e) =>
-                        setRestaurant((p) => ({ ...p, phone: e.target.value }))
-                      }
+                      onChange={(e) => setRestaurant((p) => ({ ...p, phone: e.target.value }))}
                     />
                   </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* ✅ Location & Address với Map */}
+          <div className="bg-white rounded-xl shadow-lg p-6">
+            <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+              <MapPin className="w-5 h-5 text-orange-600" />
+              Vị trí & Địa chỉ
+            </h3>
+
+            <div className="space-y-4">
+              {/* Search Address */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Tìm kiếm địa chỉ</label>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 z-10" />
+                  <input
+                    className="w-full pl-10 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all"
+                    placeholder="Tìm địa chỉ..."
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                  />
                 </div>
 
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Địa chỉ <span className="text-red-500">*</span>
-                  </label>
-                  <div className="relative">
-                    <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-                    <input
-                      type="text"
-                      className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                      placeholder="123 Đường ABC, Quận XYZ"
-                      value={restaurant.address}
-                      onChange={(e) =>
-                        setRestaurant((p) => ({ ...p, address: e.target.value }))
-                      }
-                    />
+                {suggestions.length > 0 && (
+                  <div className="mt-2 bg-white border-2 border-gray-200 rounded-xl shadow-lg max-h-48 overflow-auto z-20 absolute w-full">
+                    {suggestions.map((s) => (
+                      <div
+                        key={s.place_id}
+                        onClick={() => selectSuggestion(s)}
+                        className="px-4 py-3 hover:bg-orange-50 cursor-pointer border-b last:border-b-0 transition-colors"
+                      >
+                        <p className="text-sm font-medium text-gray-800">{s.display_name}</p>
+                      </div>
+                    ))}
                   </div>
+                )}
+              </div>
+
+              {/* Map */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Chọn vị trí trên bản đồ</label>
+                <div className="rounded-xl overflow-hidden border-2 border-gray-200 shadow-lg h-80 relative z-0">
+                  <MapContainer center={[position.lat, position.lng]} zoom={13} style={{ height: "100%", width: "100%" }}>
+                    <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+                    <Marker position={[position.lat, position.lng]} />
+                    <MapClickHandler />
+                    <MapUpdater position={position} />
+                  </MapContainer>
                 </div>
+                <div className="mt-2 flex items-center gap-2 text-sm text-gray-600">
+                  <Navigation className="w-4 h-4 text-orange-500" />
+                  <span>
+                    Tọa độ: {position.lat.toFixed(5)}, {position.lng.toFixed(5)}
+                  </span>
+                </div>
+              </div>
+
+              {/* Address Detail */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Địa chỉ chi tiết <span className="text-red-500">*</span>
+                </label>
+                <textarea
+                  rows={3}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent resize-none"
+                  placeholder="Số nhà, tên đường, phường, quận..."
+                  value={restaurant.address}
+                  onChange={(e) => setRestaurant((p) => ({ ...p, address: e.target.value }))}
+                />
               </div>
             </div>
           </div>
@@ -400,11 +521,8 @@ export default function ProfilePage({ onUpdate }) {
             </h3>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {/* Min Order */}
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Đơn tối thiểu
-                </label>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Đơn tối thiểu</label>
                 <div className="relative">
                   <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
                   <input
@@ -413,19 +531,14 @@ export default function ProfilePage({ onUpdate }) {
                     className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                     placeholder="50000"
                     value={restaurant.minOrder}
-                    onChange={(e) =>
-                      setRestaurant((p) => ({ ...p, minOrder: e.target.value }))
-                    }
+                    onChange={(e) => setRestaurant((p) => ({ ...p, minOrder: e.target.value }))}
                   />
                 </div>
                 <p className="text-xs text-gray-500 mt-1">Giá trị đơn hàng tối thiểu (VNĐ)</p>
               </div>
 
-              {/* Delivery Fee */}
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Phí giao hàng
-                </label>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Phí giao hàng</label>
                 <div className="relative">
                   <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
                   <input
@@ -434,19 +547,14 @@ export default function ProfilePage({ onUpdate }) {
                     className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                     placeholder="20000"
                     value={restaurant.deliveryFee}
-                    onChange={(e) =>
-                      setRestaurant((p) => ({ ...p, deliveryFee: e.target.value }))
-                    }
+                    onChange={(e) => setRestaurant((p) => ({ ...p, deliveryFee: e.target.value }))}
                   />
                 </div>
                 <p className="text-xs text-gray-500 mt-1">Chi phí vận chuyển (VNĐ)</p>
               </div>
 
-              {/* Max Distance */}
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Bán kính giao hàng
-                </label>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Bán kính giao hàng</label>
                 <div className="relative">
                   <Gauge className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
                   <input
@@ -456,9 +564,7 @@ export default function ProfilePage({ onUpdate }) {
                     className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                     placeholder="5"
                     value={restaurant.maxDeliveryDistance}
-                    onChange={(e) =>
-                      setRestaurant((p) => ({ ...p, maxDeliveryDistance: e.target.value }))
-                    }
+                    onChange={(e) => setRestaurant((p) => ({ ...p, maxDeliveryDistance: e.target.value }))}
                   />
                 </div>
                 <p className="text-xs text-gray-500 mt-1">Tối đa (km)</p>

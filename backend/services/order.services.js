@@ -2,7 +2,8 @@ import OrderRepository from "../repositories/order.repositories.js";
 import ProductRepository from "../repositories/product.repositories.js";
 import DeliveryRepository from "../repositories/delivery.repositories.js";
 import DroneRepository from "../repositories/drone.repositories.js";
-import RestaurantRepository from "../repositories/restaurant.repositories.js"; // ✅ thêm import
+import RestaurantRepository from "../repositories/restaurant.repositories.js";
+import DroneMovementService from "./droneMovement.services.js";
 
 class OrderService {
   // 🔹 Tạo đơn hàng — có thể gồm nhiều nhà hàng
@@ -10,16 +11,13 @@ class OrderService {
     if (!orderData || !Array.isArray(orderData.items) || orderData.items.length === 0) {
       throw new Error("Thiếu thông tin đơn hàng (items)");
     }
-    if (!orderData.userId) {
-      throw new Error("Thiếu thông tin đơn hàng (userId)");
-    }
+    if (!orderData.userId) throw new Error("Thiếu thông tin đơn hàng (userId)");
     if (!orderData.shippingAddress || !orderData.shippingAddress.text) {
       throw new Error("Vui lòng cung cấp địa chỉ giao hàng");
     }
 
-    // 🔸 Gom nhóm sản phẩm theo restaurantId
     const productCache = new Map();
-    const groups = new Map(); // key = restaurantId, value = { items, totalPrice }
+    const groups = new Map();
 
     for (const it of orderData.items) {
       const pid = it.productId;
@@ -33,47 +31,29 @@ class OrderService {
         productCache.set(pid, product);
       }
 
-      // ✅ Kiểm tra trạng thái món & nhà hàng trước khi tiếp tục
-      if (product.available === false) {
-        throw new Error(`Món ăn '${product.name}' không còn khả dụng`);
-      }
+      if (product.available === false) throw new Error(`Món ăn '${product.name}' không còn khả dụng`);
 
       const restId = product.restaurantId?._id || product.restaurantId;
-      if (!restId) {
-        throw new Error(`Món ăn '${product.name}' không còn khả dụng`);
-      }
+      if (!restId) throw new Error(`Món ăn '${product.name}' không còn khả dụng`);
 
       const restaurant = await RestaurantRepository.getRestaurantById(restId);
       if (!restaurant || restaurant.status !== "verified") {
         throw new Error(`Nhà hàng của món '${product.name}' hiện không hoạt động`);
       }
 
-      const rid =
-        product?.restaurantId?._id?.toString?.() ||
-        product?.restaurantId?.toString?.();
+      const rid = product?.restaurantId?._id?.toString?.() || product?.restaurantId?.toString?.();
       if (!rid) throw new Error(`Không xác định được nhà hàng của sản phẩm: ${pid}`);
 
-      if (!groups.has(rid)) {
-        groups.set(rid, { items: [], totalPrice: 0 });
-      }
+      if (!groups.has(rid)) groups.set(rid, { items: [], totalPrice: 0 });
 
       const priceNow = Number(product.price || 0);
       const g = groups.get(rid);
-      // ✅ Lưu snapshot giá & tên tại thời điểm đặt
-      g.items.push({
-        productId: pid,
-        quantity: qty,
-        priceAtOrderTime: priceNow,
-        name: product.name,
-      });
+      g.items.push({ productId: pid, quantity: qty, priceAtOrderTime: priceNow, name: product.name });
       g.totalPrice += priceNow * qty;
     }
 
-    if (groups.size === 0) {
-      throw new Error("Không có món hợp lệ trong đơn hàng");
-    }
+    if (groups.size === 0) throw new Error("Không có món hợp lệ trong đơn hàng");
 
-    // 🔹 Nếu chỉ có 1 nhà hàng → hành vi cũ
     if (groups.size === 1) {
       const [rid, group] = Array.from(groups.entries())[0];
       const payload = {
@@ -91,7 +71,6 @@ class OrderService {
       return await OrderRepository.createOrder(payload);
     }
 
-    // 🔹 Nếu nhiều nhà hàng → tạo nhiều đơn nhỏ
     const createdOrders = [];
     for (const [rid, group] of groups.entries()) {
       const payload = {
@@ -116,7 +95,18 @@ class OrderService {
   }
 
   async getOrderById(orderId) {
-    const order = await OrderRepository.getOrderById(orderId);
+    const order = await OrderRepository.getOrderById(orderId, [
+      { path: "userId", select: "name email" },
+      {
+        path: "restaurantId",
+        select: "name address locationId",
+        populate: { path: "locationId", select: "coords address" },
+      },
+      { path: "paymentId" },
+      { path: "deliveryId" },
+      { path: "items.productId", select: "name image" },
+    ]);
+
     if (!order) throw new Error("Không tìm thấy đơn hàng");
     return order;
   }
@@ -135,14 +125,11 @@ class OrderService {
 
   async updateOrder(orderId, updateData) {
     const existingOrder = await OrderRepository.getOrderById(orderId);
-    if (!existingOrder) {
-      throw new Error("Không tìm thấy đơn hàng để cập nhật");
-    }
+    if (!existingOrder) throw new Error("Không tìm thấy đơn hàng để cập nhật");
 
     const updated = await OrderRepository.updateOrder(orderId, updateData);
     if (!updated) throw new Error("Cập nhật đơn hàng thất bại");
 
-    // ✅ Nếu đơn được hoàn thành và có drone → cho drone về idle
     if (updateData.status === "completed" && existingOrder.deliveryId) {
       const delivery = await DeliveryRepository.getDeliveryById(existingOrder.deliveryId);
       if (delivery && delivery.droneId) {
@@ -163,15 +150,22 @@ class OrderService {
   async confirmCompletedByCustomer(orderId, userId) {
     const order = await OrderRepository.getOrderById(orderId);
     if (!order) throw new Error("Không tìm thấy đơn hàng");
+
     if (String(order.userId?._id || order.userId) !== String(userId)) {
       throw new Error("Bạn không thể xác nhận đơn hàng không thuộc về bạn");
     }
-    if (order.status !== "delivering") {
-      throw new Error("Chỉ có thể xác nhận khi đơn đang giao");
+
+    if (order.status !== "delivering") throw new Error("Chỉ có thể xác nhận khi đơn đang giao");
+
+    // Dừng movement nếu drone đang di chuyển
+    const delivery = order.deliveryId ? await DeliveryRepository.getDeliveryById(order.deliveryId) : null;
+    if (delivery?.droneId) {
+      DroneMovementService.stopMovement(delivery.droneId);
     }
 
-    const updated = await this.updateOrder(orderId, { status: "completed" });
-    return updated;
+    // Cập nhật trạng thái đơn hàng
+    const updatedOrder = await this.updateOrder(orderId, { status: "completed" });
+    return updatedOrder;
   }
 }
 

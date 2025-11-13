@@ -165,13 +165,12 @@ export default function PaymentPage() {
     return Object.values(groups);
   };
 
-  // ✅ ĐÃ SỬA THEO YÊU CẦU
+  // ✅ PHIÊN BẢN ĐÃ SỬA — CÓ GOM ID ĐƠN & TRACKING MAP
   const handleCreateOrders = async () => {
     if (!cart?.items?.length) {
       toast.error("Giỏ hàng trống");
       return;
     }
-
     if (!address || !address.trim()) {
       toast.error("Vui lòng chọn hoặc tìm kiếm địa chỉ giao hàng trên bản đồ.");
       return;
@@ -209,6 +208,7 @@ export default function PaymentPage() {
       const user = JSON.parse(localStorage.getItem("user") || "{}");
       const restaurantGroups = groupByRestaurant();
 
+      const createdOrders = []; // ✅ gom id đơn để điều hướng tracking
       for (const group of restaurantGroups) {
         const payload = {
           userId: user.id || user._id,
@@ -238,6 +238,7 @@ export default function PaymentPage() {
         }
 
         const created = await res.json();
+        createdOrders.push(created);
 
         if (paymentMethod === "MOMO") {
           const payRes = await fetch(`http://localhost:5000/api/payment`, {
@@ -255,7 +256,9 @@ export default function PaymentPage() {
 
           if (!payRes.ok) {
             const payErrorData = await payRes.json().catch(() => ({}));
-            throw new Error(payErrorData.message || "Không thể tạo thanh toán MoMo");
+            throw new Error(
+              payErrorData.message || "Không thể tạo thanh toán MoMo"
+            );
           }
           const payData = await payRes.json();
           if (payData.paymentUrl) {
@@ -268,7 +271,14 @@ export default function PaymentPage() {
 
       await clearCartOnServer(cart._id);
       toast.success("Tạo đơn thành công");
-      navigate("/orders");
+
+      // ✅ Điều hướng tới trang chi tiết đơn đầu tiên để hiển thị bản đồ tracking
+      const firstOrder = createdOrders[0];
+      if (firstOrder?._id) {
+        navigate(`/orders/${firstOrder._id}?track=1`);
+      } else {
+        navigate("/orders");
+      }
     } catch (err) {
       console.error("Create order error:", err);
       toast.error(err.message || "Lỗi khi tạo đơn");
@@ -327,7 +337,10 @@ export default function PaymentPage() {
             >
               <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
               <Marker position={[position.lat, position.lng]} />
-              <MapClickHandler setPosition={setPosition} reverseGeocode={reverseGeocode} />
+              <MapClickHandler
+                setPosition={setPosition}
+                reverseGeocode={reverseGeocode}
+              />
               <MapUpdater position={position} />
             </MapContainer>
           </div>
@@ -367,8 +380,12 @@ export default function PaymentPage() {
               <div className="flex items-center gap-2 mb-3 pb-2 border-b">
                 <span className="text-lg">🏪</span>
                 <div>
-                  <h4 className="font-semibold text-base">{group.restaurantName}</h4>
-                  <p className="text-xs text-gray-500">{group.items.length} món</p>
+                  <h4 className="font-semibold text-base">
+                    {group.restaurantName}
+                  </h4>
+                  <p className="text-xs text-gray-500">
+                    {group.items.length} món
+                  </p>
                 </div>
               </div>
 
@@ -400,7 +417,9 @@ export default function PaymentPage() {
 
               <div className="flex justify-between mt-3 pt-2 border-t text-sm">
                 <span className="text-gray-600">Tạm tính</span>
-                <span className="font-semibold">{group.subtotal.toLocaleString("vi-VN")}₫</span>
+                <span className="font-semibold">
+                  {group.subtotal.toLocaleString("vi-VN")}₫
+                </span>
               </div>
             </div>
           ))}
@@ -409,7 +428,9 @@ export default function PaymentPage() {
         <div className="border-t pt-4">
           <div className="flex justify-between mb-4 text-lg">
             <span className="font-bold">Tổng cộng</span>
-            <span className="text-2xl font-bold text-green-600">{total.toLocaleString("vi-VN")}₫</span>
+            <span className="text-2xl font-bold text-green-600">
+              {total.toLocaleString("vi-VN")}₫
+            </span>
           </div>
 
           <div className="flex gap-3">
