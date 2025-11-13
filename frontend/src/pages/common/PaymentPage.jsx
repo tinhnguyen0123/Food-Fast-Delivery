@@ -206,84 +206,95 @@ export default function PaymentPage() {
     try {
       const token = localStorage.getItem("token");
       const user = JSON.parse(localStorage.getItem("user") || "{}");
-      const restaurantGroups = groupByRestaurant();
+        // 1. Gói tất cả thông tin vào một payload duy nhất
+      // Backend (order.services.js) của bạn đã hỗ trợ việc này
+      const orderPayload = {
+        userId: user.id || user._id,
+        items: cart.items.map((it) => ({
+          productId: it.productId._id || it.productId,
+          quantity: it.quantity,
+        })),
+        paymentMethod,
+        shippingAddress: { text: address, location: position },
+      };
 
-      const createdOrders = []; // ✅ gom id đơn để điều hướng tracking
-      for (const group of restaurantGroups) {
-        const payload = {
-          userId: user.id || user._id,
-          restaurantId: group.restaurantId,
-          items: group.items.map((it) => ({
-            productId: it.productId._id || it.productId,
-            quantity: it.quantity,
-            priceAtOrderTime: it.productId.price || it.priceAtOrderTime || 0,
-          })),
-          totalPrice: group.subtotal,
-          paymentMethod,
-          shippingAddress: { text: address, location: position },
-        };
+      // 2. Gọi API tạo đơn hàng (1 LẦN DUY NHẤT)
+      const orderRes = await fetch("http://localhost:5000/api/order", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(orderPayload),
+      });
 
-        const res = await fetch("http://localhost:5000/api/order", {
+      if (!orderRes.ok) {
+        const errorData = await orderRes.json();
+        throw new Error(errorData.message || "Tạo đơn hàng thất bại.");
+      }
+
+      const creationResponse = await orderRes.json();
+
+      // 3. Chuẩn hóa kết quả (backend có thể trả 1 object hoặc 1 array)
+      const createdOrders = Array.isArray(creationResponse)
+        ? creationResponse
+        : [creationResponse];
+
+      // 4. Nếu là COD, xử lý như cũ (xóa giỏ, chuyển trang)
+      if (paymentMethod === "COD") {
+        await clearCartOnServer(cart._id); // clearCartOnServer từ code cũ
+        toast.success("Tạo đơn thành công");
+        navigate("/orders");
+        return; // Kết thúc
+      }
+
+      // 5. Nếu là MOMO
+      if (paymentMethod === "MOMO") {
+        // 5a. Lấy danh sách ID và tổng tiền
+        const orderIds = createdOrders.map((o) => o._id);
+        const grandTotal = createdOrders.reduce(
+          (sum, o) => sum + o.totalPrice,
+          0
+        );
+
+        // 5b. Gọi API thanh toán (1 LẦN DUY NHẤT)
+        const payRes = await fetch(`http://localhost:5000/api/payment`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
           },
-          body: JSON.stringify(payload),
+          body: JSON.stringify({
+            orderIds: orderIds,
+            amount: grandTotal,
+            method: "MOMO",
+          }),
         });
 
-        if (!res.ok) {
-          const errorData = await res.json();
-          throw new Error(errorData.message || "Tạo đơn hàng thất bại.");
+        if (!payRes.ok) {
+          const payErrorData = await payRes.json().catch(() => ({}));
+          throw new Error(payErrorData.message || "Không thể tạo thanh toán MoMo");
         }
 
-        const created = await res.json();
-        createdOrders.push(created);
-
-        if (paymentMethod === "MOMO") {
-          const payRes = await fetch(`http://localhost:5000/api/payment`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${token}`,
-            },
-            body: JSON.stringify({
-              orderId: created._id,
-              amount: created.totalPrice,
-              method: "MOMO",
-            }),
-          });
-
-          if (!payRes.ok) {
-            const payErrorData = await payRes.json().catch(() => ({}));
-            throw new Error(
-              payErrorData.message || "Không thể tạo thanh toán MoMo"
-            );
-          }
-          const payData = await payRes.json();
-          if (payData.paymentUrl) {
-            window.location.href = payData.paymentUrl;
-            return;
-          }
+        const payData = await payRes.json();
+        if (payData.paymentUrl) {
+          // 5c. Chuyển hướng tới MoMo.
+          // QUAN TRỌNG: KHÔNG XÓA GIỎ HÀNG Ở ĐÂY
+          localStorage.setItem("currentCartId", cart._id);
+          window.location.href = payData.paymentUrl;
+          return;
+        }
           throw new Error("Không thể tạo thanh toán MoMo");
         }
       }
-
-      await clearCartOnServer(cart._id);
-      toast.success("Tạo đơn thành công");
-
-      // ✅ Điều hướng tới trang chi tiết đơn đầu tiên để hiển thị bản đồ tracking
-      const firstOrder = createdOrders[0];
-      if (firstOrder?._id) {
-        navigate(`/orders/${firstOrder._id}?track=1`);
-      } else {
-        navigate("/orders");
-      }
-    } catch (err) {
-      console.error("Create order error:", err);
-      toast.error(err.message || "Lỗi khi tạo đơn");
-    } finally {
-      setCreating(false);
+      catch (err) {
+          console.error("Create order error:", err);
+          toast.error(err.message || "Lỗi khi tạo đơn");
+        } finally {
+          // Chỉ setCreating(false) nếu không phải chuyển hướng MoMo
+          if (paymentMethod !== "MOMO") {
+            setCreating(false);
+          }
     }
   };
 

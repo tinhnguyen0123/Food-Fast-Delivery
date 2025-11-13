@@ -9,13 +9,14 @@ class PaymentRepository {
 
   // Lấy payment theo ID
   async getPaymentById(paymentId) {
-    return await Payment.findById(paymentId)
-      .populate("orderId");
+    // ✅ SỬA LỖI: Đổi "orderId" thành "orderIds"
+    return await Payment.findById(paymentId).populate("orderIds");
   }
 
   // Lấy tất cả payment của 1 order
   async getPaymentsByOrder(orderId) {
-    return await Payment.find({ orderId }).sort({ createdAt: -1 });
+    // ✅ SỬA LỖI: Tìm trong mảng "orderIds"
+    return await Payment.find({ orderIds: orderId }).sort({ createdAt: -1 });
   }
 
   // Lấy payment theo trạng thái (pending, paid, failed)
