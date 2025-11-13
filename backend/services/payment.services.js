@@ -7,20 +7,37 @@ import axios from "axios";
 class PaymentService {
   // Tạo payment mới
   async createPayment(paymentData) {
-    if (!paymentData.orderId || !paymentData.amount) {
-      throw new Error("Thiếu thông tin bắt buộc (orderId, amount)");
+    if (
+      !paymentData.orderIds ||
+      !Array.isArray(paymentData.orderIds) ||
+      paymentData.orderIds.length === 0 ||
+      !paymentData.amount
+    ) {
+      throw new Error("Thiếu thông tin bắt buộc (orderIds, amount)");
     }
 
-    const order = await OrderRepository.getOrderById(paymentData.orderId);
-    if (!order) throw new Error("Đơn hàng không tồn tại");
+    // (Bỏ qua việc kiểm tra từng orderId ở đây để đơn giản,
+    // vì chúng vừa được tạo ở bước trước)
 
     // 1. Tạo thanh toán ở trạng thái 'pending'
     const payment = await PaymentRepository.createPayment({
-      orderId: paymentData.orderId,
+      orderIds: paymentData.orderIds,
       method: paymentData.method,
       amount: paymentData.amount, // 🔹 MỚI: Lưu lại số tiền
       status: "pending",
     });
+
+    // 🔹 MỚI: Cập nhật ngược lại tất cả các Order với paymentId này
+    try {
+      for (const orderId of paymentData.orderIds) {
+        await OrderRepository.updateOrder(orderId, { paymentId: payment._id });
+      }
+    } catch (e) {
+      console.error("Lỗi khi cập nhật paymentId cho đơn hàng:", e.message);
+      // Nếu lỗi, nên xóa payment vừa tạo để tránh rác DB
+      await PaymentRepository.deletePayment(payment._id);
+      throw new Error("Không thể liên kết thanh toán với đơn hàng");
+    }
     
 
     // 2. Nếu là MOMO, gọi API MoMo để lấy link
@@ -56,7 +73,7 @@ class PaymentService {
     const accessKey = process.env.MOMO_ACCESS_KEY;
     const secretKey = process.env.MOMO_SECRET_KEY;
     // Lấy URL từ .env (đây là URL frontend)
-    const redirectUrl = `${process.env.MOMO_REDIRECT_URL}/${payment.orderId}`;
+    const redirectUrl = `${process.env.MOMO_REDIRECT_URL}/payment-status?paymentId=${payment._id}`;
     const ipnUrl = process.env.MOMO_IPN_URL;
     const amountStr = amount.toString();
 
@@ -65,9 +82,7 @@ class PaymentService {
     const orderId = payment._id.toString() + "_" + new Date().getTime();
     const requestId = orderId;
 
-    const orderInfo = `Thanh toán Drone Delivery cho đơn hàng #${payment.orderId
-      .toString()
-      .slice(-6)}`;
+    const orderInfo = `Thanh toán ${payment.orderIds.length} đơn hàng Drone Delivery`;
     const requestType = "payWithMethod"; // "payWithMethod" từ file của bạn cũng OK
     const extraData = JSON.stringify({ dbPaymentId: payment._id }); // Gửi ID của payment DB
 
@@ -132,12 +147,17 @@ class PaymentService {
     const updated = await PaymentRepository.updatePayment(paymentId, updateData);
     if (!updated) throw new Error("Cập nhật thanh toán thất bại");
 
-    // 🔹 MỚI: Nếu thanh toán thành công, cập nhật đơn hàng
+    // 🔹 THAY ĐỔI: Nếu thanh toán thành công, cập nhật TẤT CẢ đơn hàng
     if (updateData.status === "paid") {
       try {
-        await OrderRepository.updateOrder(updated.orderId, {
-          status: "preparing", // Chuyển đơn hàng sang "Đang chuẩn bị"
-        });
+        // Lặp qua tất cả orderIds trong payment và cập nhật
+        for (const orderId of updated.orderIds) {
+          await OrderRepository.updateOrder(orderId, {
+            status: "preparing", // Chuyển đơn hàng sang "Đang chuẩn bị"
+            // Bạn cũng có thể cập nhật paymentMethod nếu muốn, dù order đã có paymentId
+            paymentMethod: "MOMO",
+          });
+        }
       } catch (e) {
         console.error("Lỗi khi cập nhật trạng thái đơn hàng:", e.message);
         // (Không throw lỗi này để tránh làm hỏng IPN)

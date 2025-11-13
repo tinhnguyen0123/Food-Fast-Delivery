@@ -21,7 +21,7 @@ class OrderRepository {
       .populate("userId", "name email")
       .populate("restaurantId", "name address")
       .populate("items.productId", "name price")
-      .populate("paymentId")
+      .populate("paymentId", "status")
       .populate("deliveryId");
   }
 
