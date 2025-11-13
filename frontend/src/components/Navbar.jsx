@@ -17,6 +17,7 @@ export default function Navbar() {
     }
   });
   const [showNotifications, setShowNotifications] = useState(false);
+  const [arrivedOrders, setArrivedOrders] = useState(new Set()); // Track đơn đã thông báo
 
   const user = (() => {
     try {
@@ -34,7 +35,7 @@ export default function Navbar() {
     setTimeout(() => navigate(path), 100);
   };
 
-  // 🔹 Đóng dropdown khi click ra ngoài
+  // Đóng dropdown khi click ra ngoài
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
@@ -82,16 +83,18 @@ export default function Navbar() {
     });
   };
 
-  // Polling đơn hàng của customer
+  // Polling orders - phát hiện arrived dựa trên arrivedNotified
   useEffect(() => {
-    if (!user?.id && !user?._id) return;
-    let timerId;
+    const token = localStorage.getItem("token");
+    const userId = user?.id || user?._id;
+    if (!token || !userId) return;
+
     let mounted = true;
+    let timerId;
 
     const poll = async () => {
       try {
-        const uid = user.id || user._id;
-        const res = await fetch(`${import.meta.env.VITE_API_BASE || "http://localhost:5000"}/api/order/user/${uid}`, {
+        const res = await fetch(`${import.meta.env.VITE_API_BASE || "http://localhost:5000"}/api/order/user/${userId}`, {
           headers: token ? { Authorization: `Bearer ${token}` } : undefined,
         });
         if (!res.ok) return;
@@ -106,6 +109,7 @@ export default function Navbar() {
           const old = statusMap[id];
           const now = o.status;
 
+          // Drone bắt đầu giao
           if (now === "delivering" && old !== "delivering") {
             const shortId = id.slice(-6);
             addNotification({
@@ -115,26 +119,22 @@ export default function Navbar() {
               message: `Đơn hàng #${shortId} đang được giao.`,
               createdAt: new Date().toISOString(),
             });
-
-            setTimeout(() => {
-              addNotification({
-                type: "arrival",
-                orderId: id,
-                title: "Đơn hàng đã đến nơi",
-                message: `Đơn hàng #${shortId} đã đến. Vui lòng xác nhận nhận hàng.`,
-                createdAt: new Date().toISOString(),
-              });
-            }, 10_000);
           }
 
-          if (now === "completed" && old !== "completed") {
-            setNotifications((prev) => {
-              const next = prev.filter((n) => n.orderId !== id);
-              saveNotifications(next);
-              return next;
+          // Drone đã đến nơi
+          if (o.arrivedNotified && !arrivedOrders.has(id) && now === "delivering") {
+            const shortId = id.slice(-6);
+            addNotification({
+              type: "arrival",
+              orderId: id,
+              title: "Đơn hàng đã đến nơi",
+              message: `Đơn hàng #${shortId} đã giao đến. Vui lòng xác nhận nhận hàng.`,
+              createdAt: new Date().toISOString(),
             });
+            setArrivedOrders(prev => new Set(prev).add(id));
           }
 
+          // **Bỏ đoạn xóa thông báo tự động khi completed**
           statusMap[id] = now;
         }
 
@@ -145,13 +145,13 @@ export default function Navbar() {
     };
 
     poll();
-    timerId = setInterval(poll, 5000);
+    timerId = setInterval(poll, 3000);
 
     return () => {
       mounted = false;
       if (timerId) clearInterval(timerId);
     };
-  }, [user?.id, user?._id, token]);
+  }, [user?.id, user?._id, token, arrivedOrders]);
 
   const toggleMobileMenu = () => setIsMobileMenuOpen(!isMobileMenuOpen);
   const toggleProfileDropdown = () => setIsProfileDropdownOpen(!isProfileDropdownOpen);
@@ -190,7 +190,7 @@ export default function Navbar() {
 
                 {/* Notifications */}
                 <div className="relative">
-                  <button type="button" onClick={() => { setShowNotifications((s) => !s); if (!showNotifications) markAllRead(); }} className="relative bg-gray-100 text-gray-700 px-3 py-2 rounded-xl hover:bg-gray-200 transition-shadow shadow-sm text-sm" title="Thông báo">
+                  <button type="button" onClick={() => setShowNotifications((s) => !s)} className="relative bg-gray-100 text-gray-700 px-3 py-2 rounded-xl hover:bg-gray-200 transition-shadow shadow-sm text-sm" title="Thông báo">
                     <Bell className="w-5 h-5" />
                     {unreadCount > 0 && <span className="absolute -top-1 -right-1 bg-red-600 text-white text-xs rounded-full px-1.5">{unreadCount}</span>}
                   </button>
@@ -236,7 +236,7 @@ export default function Navbar() {
 
                 {/* Profile Dropdown */}
                 <div className="relative" ref={dropdownRef}>
-                  <button onClick={toggleProfileDropdown} className="flex items-center gap-2 font-medium text-gray-700 hover:text-blue-600 transition-colors px-3 py-2 rounded-lg hover:bg-blue-50">
+                  <button onClick={() => setIsProfileDropdownOpen(!isProfileDropdownOpen)} className="flex items-center gap-2 font-medium text-gray-700 hover:text-blue-600 transition-colors px-3 py-2 rounded-lg hover:bg-blue-50">
                     <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full flex items-center justify-center text-white font-semibold">{user?.name?.charAt(0).toUpperCase() || 'U'}</div>
                     <span>{user?.name}</span>
                   </button>

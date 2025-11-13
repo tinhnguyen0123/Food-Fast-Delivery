@@ -2,6 +2,8 @@ import DroneRepository from "../repositories/drone.repositories.js";
 import DeliveryRepository from "../repositories/delivery.repositories.js";
 import OrderRepository from "../repositories/order.repositories.js";
 import RestaurantRepository from "../repositories/restaurant.repositories.js";
+import LocationRepository from "../repositories/location.repositories.js";
+import DroneMovementService from "./droneMovement.services.js";
 
 class DroneService {
   // ✅ Tạo drone mới — yêu cầu có restaurantId
@@ -9,7 +11,6 @@ class DroneService {
     if (!data.code) throw new Error("Thiếu mã drone");
     if (!data.restaurantId) throw new Error("Thiếu restaurantId");
 
-    // ✅ Kiểm tra trạng thái nhà hàng trước khi tạo drone
     const restaurant = await RestaurantRepository.getRestaurantById(data.restaurantId);
     if (!restaurant) throw new Error("Nhà hàng không tồn tại");
     if (restaurant.status === "suspended") throw new Error("Nhà hàng đã bị khóa");
@@ -39,7 +40,6 @@ class DroneService {
     return await DroneRepository.getDronesByStatus(status);
   }
 
-  // ✅ Lấy danh sách drone theo nhà hàng
   async getDronesByRestaurant(restaurantId) {
     if (!restaurantId) throw new Error("Thiếu restaurantId");
     return await DroneRepository.getDronesByRestaurant(restaurantId);
@@ -57,7 +57,7 @@ class DroneService {
     return deleted;
   }
 
-  // ✅ Gán drone cho đơn hàng — kiểm tra nhà hàng trùng khớp
+  // ✅ Gán drone cho đơn hàng và khởi chạy di chuyển
   async assignDrone(droneId, orderId) {
     if (!droneId || !orderId) throw new Error("Thiếu droneId hoặc orderId");
 
@@ -71,35 +71,55 @@ class DroneService {
     if (!drone) throw new Error("Drone không tồn tại");
     if (drone.status !== "idle") throw new Error("Drone không sẵn sàng");
 
-    // --- So sánh ID an toàn
     const orderRestaurantId = order.restaurantId?._id || order.restaurantId;
     if (!orderRestaurantId || String(drone.restaurantId) !== String(orderRestaurantId)) {
       throw new Error("Drone không thuộc nhà hàng của đơn này");
     }
 
-    // ✅ Tạo bản ghi delivery
+    const restaurant = await RestaurantRepository.getRestaurantById(orderRestaurantId);
+    const pickupLocId = restaurant?.locationId?._id || restaurant?.locationId || null;
+
+    let dropoffLocId = null;
+    const shipping = order?.shippingAddress;
+    if (shipping?.location?.lat && shipping?.location?.lng) {
+      const createdDrop = await LocationRepository.createLocation({
+        type: "user",
+        coords: { lat: shipping.location.lat, lng: shipping.location.lng },
+        address: shipping.text || shipping.address || "",
+      });
+      dropoffLocId = createdDrop?._id;
+    }
+
     const delivery = await DeliveryRepository.createDelivery({
       orderId: order._id,
       droneId: drone._id,
+      pickupLocationId: pickupLocId || undefined,
+      dropoffLocationId: dropoffLocId || undefined,
       status: "on_the_way",
       startedAt: new Date(),
     });
 
-    // ✅ Cập nhật trạng thái đơn
     await OrderRepository.updateOrder(order._id, {
       status: "delivering",
       deliveryId: delivery._id,
     });
 
-    // ✅ Cập nhật trạng thái drone
-    const updatedDrone = await DroneRepository.updateDrone(drone._id, {
-      status: "delivering",
+    const updateDronePayload = { status: "delivering" };
+    if (!drone.currentLocationId && pickupLocId) {
+      updateDronePayload.currentLocationId = pickupLocId;
+    }
+    const updatedDrone = await DroneRepository.updateDrone(drone._id, updateDronePayload);
+
+    // ✅ Bắt đầu di chuyển drone theo delivery route
+    setImmediate(() => {
+      DroneMovementService.startMovement(delivery._id).catch((err) =>
+        console.error("Failed to start drone movement:", err)
+      );
     });
 
     return { delivery, orderId: order._id, drone: updatedDrone };
   }
 
-  // ✅ Tự động phân bổ drone cho đơn của nhà hàng
   async autoAssignForRestaurant(restaurantId) {
     if (!restaurantId) throw new Error("Thiếu restaurantId");
 

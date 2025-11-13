@@ -165,13 +165,12 @@ export default function PaymentPage() {
     return Object.values(groups);
   };
 
-  // ✅ ĐÃ SỬA THEO YÊU CẦU
+  // ✅ PHIÊN BẢN ĐÃ SỬA — CÓ GOM ID ĐƠN & TRACKING MAP
   const handleCreateOrders = async () => {
     if (!cart?.items?.length) {
       toast.error("Giỏ hàng trống");
       return;
     }
-
     if (!address || !address.trim()) {
       toast.error("Vui lòng chọn hoặc tìm kiếm địa chỉ giao hàng trên bản đồ.");
       return;
@@ -349,7 +348,10 @@ export default function PaymentPage() {
             >
               <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
               <Marker position={[position.lat, position.lng]} />
-              <MapClickHandler setPosition={setPosition} reverseGeocode={reverseGeocode} />
+              <MapClickHandler
+                setPosition={setPosition}
+                reverseGeocode={reverseGeocode}
+              />
               <MapUpdater position={position} />
             </MapContainer>
           </div>
@@ -389,8 +391,12 @@ export default function PaymentPage() {
               <div className="flex items-center gap-2 mb-3 pb-2 border-b">
                 <span className="text-lg">🏪</span>
                 <div>
-                  <h4 className="font-semibold text-base">{group.restaurantName}</h4>
-                  <p className="text-xs text-gray-500">{group.items.length} món</p>
+                  <h4 className="font-semibold text-base">
+                    {group.restaurantName}
+                  </h4>
+                  <p className="text-xs text-gray-500">
+                    {group.items.length} món
+                  </p>
                 </div>
               </div>
 
@@ -422,7 +428,9 @@ export default function PaymentPage() {
 
               <div className="flex justify-between mt-3 pt-2 border-t text-sm">
                 <span className="text-gray-600">Tạm tính</span>
-                <span className="font-semibold">{group.subtotal.toLocaleString("vi-VN")}₫</span>
+                <span className="font-semibold">
+                  {group.subtotal.toLocaleString("vi-VN")}₫
+                </span>
               </div>
             </div>
           ))}
@@ -431,7 +439,9 @@ export default function PaymentPage() {
         <div className="border-t pt-4">
           <div className="flex justify-between mb-4 text-lg">
             <span className="font-bold">Tổng cộng</span>
-            <span className="text-2xl font-bold text-green-600">{total.toLocaleString("vi-VN")}₫</span>
+            <span className="text-2xl font-bold text-green-600">
+              {total.toLocaleString("vi-VN")}₫
+            </span>
           </div>
 
           <div className="flex gap-3">

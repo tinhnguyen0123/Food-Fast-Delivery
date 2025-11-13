@@ -3,11 +3,11 @@ import DeliveryController from "../controllers/delivery.controllers.js";
 
 const deliveryRouter = express.Router();
 
-// CRUD routes
+// 🔀 Đặt các route cụ thể lên trước "/:id"
 deliveryRouter.post("/", DeliveryController.create);
-deliveryRouter.get("/:id", DeliveryController.getById);
-deliveryRouter.get("/drone/:droneId", DeliveryController.getByDrone);
 deliveryRouter.get("/order/:orderId", DeliveryController.getByOrder);
+deliveryRouter.get("/drone/:droneId", DeliveryController.getByDrone);
+deliveryRouter.get("/:id", DeliveryController.getById);
 deliveryRouter.put("/:id", DeliveryController.update);
 deliveryRouter.delete("/:id", DeliveryController.delete);
 
