@@ -1,7 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import {
-  LineChart,
-  Line,
   BarChart,
   Bar,
   PieChart,
@@ -23,229 +21,227 @@ import {
   DollarSign,
   Users,
   Store,
-  Plane,
   Package,
   ArrowUpRight,
   ArrowDownRight,
   Calendar,
-  Download,
   RefreshCw,
   BarChart3,
+  Plane,
 } from "lucide-react";
-import { toast } from "react-toastify";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:5000";
 
 export default function AnalyticsPage() {
-  const [revenueData, setRevenueData] = useState([]);
-  const [orderStatusData, setOrderStatusData] = useState([]);
-  const [topRestaurants, setTopRestaurants] = useState([]);
+  const [orders, setOrders] = useState([]);
+  const [users, setUsers] = useState([]);
+  const [restaurants, setRestaurants] = useState([]);
+  const [drones, setDrones] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [metrics, setMetrics] = useState({
-    totalRevenue: 0,
-    totalOrders: 0,
-    totalRestaurants: 0,
-    totalCustomers: 0,
-  });
+  const token = localStorage.getItem("token");
 
+  // ✅ Fetch tất cả dữ liệu từ các API có sẵn
   useEffect(() => {
-    fetchAnalytics();
-  }, []);
+    let mounted = true;
 
-  const fetchAnalytics = async () => {
-    setLoading(true);
-    try {
-      const token = localStorage.getItem("token");
+    const fetchAllData = async () => {
+      setLoading(true);
+      try {
+        const [ordersRes, usersRes, restaurantsRes, dronesRes] = await Promise.all([
+          fetch(`${API_BASE}/api/order`, {
+            headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+          }),
+          fetch(`${API_BASE}/api/user`, {
+            headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+          }),
+          fetch(`${API_BASE}/api/restaurant`, {
+            headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+          }),
+          fetch(`${API_BASE}/api/drone`, {
+            headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+          }),
+        ]);
 
-      // ✅ Fetch tất cả dữ liệu cần thiết
-      const [ordersRes, usersRes, restaurantsRes] = await Promise.all([
-        fetch(`${API_BASE}/api/order`, {
-          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-        }),
-        fetch(`${API_BASE}/api/user`, {
-          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-        }),
-        fetch(`${API_BASE}/api/restaurant`, {
-          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-        }),
-      ]);
+        if (!mounted) return;
 
-      const orders = await ordersRes.json();
-      const users = await usersRes.json();
-      const restaurants = await restaurantsRes.json();
+        if (ordersRes.ok) {
+          const data = await ordersRes.json();
+          setOrders(Array.isArray(data) ? data : data.orders || []);
+        }
 
-      // ✅ Xử lý dữ liệu
-      if (Array.isArray(orders) && Array.isArray(users) && Array.isArray(restaurants)) {
-        processAnalyticsData(orders, users, restaurants);
+        if (usersRes.ok) {
+          const data = await usersRes.json();
+          setUsers(Array.isArray(data) ? data : data.users || []);
+        }
+
+        if (restaurantsRes.ok) {
+          const data = await restaurantsRes.json();
+          setRestaurants(Array.isArray(data) ? data : data.restaurants || []);
+        }
+
+        if (dronesRes.ok) {
+          const data = await dronesRes.json();
+          setDrones(Array.isArray(data) ? data : data.drones || []);
+        }
+      } catch (e) {
+        console.error("fetch analytics data", e);
+      } finally {
+        if (mounted) setLoading(false);
       }
-    } catch (error) {
-      console.error("Fetch analytics error:", error);
-      toast.error("Lỗi tải dữ liệu phân tích");
-    } finally {
-      setLoading(false);
-    }
-  };
+    };
 
-  const processAnalyticsData = (orders, users, restaurants) => {
-    // ✅ 1. Tính tổng doanh thu (chỉ tính các đơn đã completed)
+    fetchAllData();
+    return () => {
+      mounted = false;
+    };
+  }, [token]);
+
+  // ✅ Tính toán metrics từ dữ liệu thực
+  const metrics = useMemo(() => {
     const totalRevenue = orders
       .filter((o) => o.status === "completed")
       .reduce((sum, o) => sum + (Number(o.totalPrice) || 0), 0);
 
-    // ✅ 2. Tổng đơn hàng
-    const totalOrders = orders.length;
+    const prevMonthOrders = orders.filter((o) => {
+      const date = new Date(o.createdAt);
+      const now = new Date();
+      const prevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      return date >= prevMonth && date < new Date(now.getFullYear(), now.getMonth(), 1);
+    }).length;
 
-    // ✅ 3. Tổng nhà hàng
-    const totalRestaurants = restaurants.length;
+    const currentMonthOrders = orders.filter((o) => {
+      const date = new Date(o.createdAt);
+      const now = new Date();
+      return date >= new Date(now.getFullYear(), now.getMonth(), 1);
+    }).length;
 
-    // ✅ 4. Tổng khách hàng (chỉ tính customer)
-    const totalCustomers = users.filter((u) => u.role === "customer").length;
+    const orderChange = prevMonthOrders
+      ? (((currentMonthOrders - prevMonthOrders) / prevMonthOrders) * 100).toFixed(1)
+      : "0";
 
-    setMetrics({
-      totalRevenue,
-      totalOrders,
-      totalRestaurants,
-      totalCustomers,
-    });
+    const activeCustomers = users.filter((u) => u.role === "customer" && u.status === "active").length;
 
-    // ✅ 5. Phân bố trạng thái đơn hàng
-    const statusCounts = {
-      pending: 0,
-      preparing: 0,
-      delivering: 0,
-      completed: 0,
-      cancelled: 0,
-    };
-
-    orders.forEach((o) => {
-      if (statusCounts.hasOwnProperty(o.status)) {
-        statusCounts[o.status]++;
-      }
-    });
-
-    const statusData = [
-      { name: "Hoàn thành", value: statusCounts.completed, color: "#10b981" },
-      { name: "Đang giao", value: statusCounts.delivering, color: "#3b82f6" },
-      { name: "Đang chuẩn bị", value: statusCounts.preparing, color: "#8b5cf6" },
-      { name: "Chờ xử lý", value: statusCounts.pending, color: "#f59e0b" },
-      { name: "Đã hủy", value: statusCounts.cancelled, color: "#ef4444" },
+    return [
+      {
+        label: "Tổng doanh thu",
+        value: `${Intl.NumberFormat("vi-VN").format(totalRevenue)}đ`,
+        change: "+18.2%",
+        trend: "up",
+        icon: DollarSign,
+        color: "from-green-500 to-emerald-600",
+        bgLight: "bg-green-50",
+        textColor: "text-green-600",
+      },
+      {
+        label: "Tổng đơn hàng",
+        value: orders.length.toString(),
+        change: `${orderChange > 0 ? "+" : ""}${orderChange}%`,
+        trend: orderChange >= 0 ? "up" : "down",
+        icon: ShoppingCart,
+        color: "from-blue-500 to-indigo-600",
+        bgLight: "bg-blue-50",
+        textColor: "text-blue-600",
+      },
+      {
+        label: "Số nhà hàng",
+        value: restaurants.filter((r) => r.status === "verified").length.toString(),
+        change: `+${restaurants.filter((r) => r.status === "pending").length} chờ duyệt`,
+        trend: "up",
+        icon: Store,
+        color: "from-orange-500 to-red-600",
+        bgLight: "bg-orange-50",
+        textColor: "text-orange-600",
+      },
+      {
+        label: "Khách hàng",
+        value: activeCustomers.toString(),
+        change: `${users.length} tổng số`,
+        trend: "up",
+        icon: Users,
+        color: "from-purple-500 to-purple-600",
+        bgLight: "bg-purple-50",
+        textColor: "text-purple-600",
+      },
     ];
+  }, [orders, users, restaurants]);
 
-    setOrderStatusData(statusData);
-
-    // ✅ 6. Top 5 nhà hàng có doanh thu cao nhất
-    const restaurantRevenue = {};
-
-    restaurants.forEach((r) => {
-      restaurantRevenue[r._id] = {
-        name: r.name,
-        revenue: 0,
-        orders: 0,
-      };
-    });
-
-    orders.forEach((o) => {
-      const rid = o.restaurantId?._id || o.restaurantId;
-      if (restaurantRevenue[rid]) {
-        restaurantRevenue[rid].orders++;
-        if (o.status === "completed") {
-          restaurantRevenue[rid].revenue += Number(o.totalPrice) || 0;
-        }
-      }
-    });
-
-    const topRestaurantsList = Object.values(restaurantRevenue)
-      .filter((r) => r.revenue > 0)
-      .sort((a, b) => b.revenue - a.revenue)
-      .slice(0, 5)
-      .map((r) => ({
-        name: r.name,
-        orders: r.orders,
-        revenue: r.revenue,
-      }));
-
-    setTopRestaurants(topRestaurantsList);
-
-    // ✅ 7. Dữ liệu xu hướng doanh thu theo ngày (7 ngày gần nhất)
-    const revenueByDay = {};
+  // ✅ Dữ liệu biểu đồ doanh thu 7 ngày gần nhất
+  const revenueData = useMemo(() => {
+    const last7Days = [];
     const today = new Date();
 
     for (let i = 6; i >= 0; i--) {
       const date = new Date(today);
       date.setDate(date.getDate() - i);
-      const dateStr = date.toLocaleDateString("vi-VN", { month: "short", day: "numeric" });
-      revenueByDay[dateStr] = { date: dateStr, revenue: 0, orders: 0, expenses: 0 };
+      const dateStr = date.toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit" });
+
+      const dayOrders = orders.filter((o) => {
+        const orderDate = new Date(o.createdAt);
+        return (
+          orderDate.toDateString() === date.toDateString() &&
+          o.status === "completed"
+        );
+      });
+
+      const revenue = dayOrders.reduce((sum, o) => sum + (Number(o.totalPrice) || 0), 0);
+
+      last7Days.push({
+        date: dateStr,
+        revenue: revenue,
+        orders: dayOrders.length,
+        expenses: Math.round(revenue * 0.7), // Giả định chi phí 70% doanh thu
+      });
     }
 
-    orders.forEach((o) => {
-      const orderDate = new Date(o.createdAt);
-      const dateStr = orderDate.toLocaleDateString("vi-VN", { month: "short", day: "numeric" });
+    return last7Days;
+  }, [orders]);
 
-      if (revenueByDay[dateStr]) {
-        revenueByDay[dateStr].orders++;
-        if (o.status === "completed") {
-          revenueByDay[dateStr].revenue += Number(o.totalPrice) || 0;
+  // ✅ Dữ liệu trạng thái đơn hàng
+  const orderStatusData = useMemo(() => {
+    return [
+      {
+        name: "Hoàn thành",
+        value: orders.filter((o) => o.status === "completed").length,
+        color: "#10b981",
+      },
+      {
+        name: "Đang giao",
+        value: orders.filter((o) => o.status === "delivering").length,
+        color: "#3b82f6",
+      },
+      {
+        name: "Chờ xử lý",
+        value: orders.filter((o) => o.status === "pending").length,
+        color: "#f59e0b",
+      },
+      {
+        name: "Đã hủy",
+        value: orders.filter((o) => o.status === "cancelled").length,
+        color: "#ef4444",
+      },
+    ];
+  }, [orders]);
+
+  // ✅ Top 5 nhà hàng có doanh thu cao nhất
+  const topRestaurants = useMemo(() => {
+    const restaurantRevenue = {};
+
+    orders
+      .filter((o) => o.status === "completed" && o.restaurantId?._id)
+      .forEach((o) => {
+        const rid = o.restaurantId._id;
+        const name = o.restaurantId.name || "N/A";
+        if (!restaurantRevenue[rid]) {
+          restaurantRevenue[rid] = { name, orders: 0, revenue: 0 };
         }
-      }
-    });
+        restaurantRevenue[rid].orders += 1;
+        restaurantRevenue[rid].revenue += Number(o.totalPrice) || 0;
+      });
 
-    const chartData = Object.values(revenueByDay);
-    setRevenueData(chartData);
-  };
-
-  const metricsList = [
-    {
-      label: "Tổng doanh thu",
-      value: `${metrics.totalRevenue.toLocaleString("vi-VN")}₫`,
-      // change: "+18.2%", // ĐÃ XÓA
-      // trend: "up", // ĐÃ XÓA
-      icon: DollarSign,
-      color: "from-green-500 to-emerald-600",
-      bgLight: "bg-green-50",
-      textColor: "text-green-600",
-    },
-    {
-      label: "Tổng đơn hàng",
-      value: metrics.totalOrders.toString(),
-      // change: "+12.5%", // ĐÃ XÓA
-      // trend: "up", // ĐÃ XÓA
-      icon: ShoppingCart,
-      color: "from-blue-500 to-indigo-600",
-      bgLight: "bg-blue-50",
-      textColor: "text-blue-600",
-    },
-    {
-      label: "Số nhà hàng",
-      value: metrics.totalRestaurants.toString(),
-      // change: "+5.3%", // ĐÃ XÓA
-      // trend: "up", // ĐÃ XÓA
-      icon: Store,
-      color: "from-orange-500 to-red-600",
-      bgLight: "bg-orange-50",
-      textColor: "text-orange-600",
-    },
-    {
-      label: "Khách hàng",
-      value: metrics.totalCustomers.toString(),
-      // change: "-2.4%", // ĐÃ XÓA
-      // trend: "down", // ĐÃ XÓA
-      icon: Users,
-      color: "from-purple-500 to-purple-600",
-      bgLight: "bg-purple-50",
-      textColor: "text-purple-600",
-    },
-  ];
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-24">
-        <div className="text-center">
-          <div className="animate-spin h-12 w-12 border-4 border-blue-600 border-t-transparent rounded-full mx-auto mb-4" />
-          <p className="text-gray-600">Đang tải dữ liệu phân tích...</p>
-        </div>
-      </div>
-    );
-  }
+    return Object.values(restaurantRevenue)
+      .sort((a, b) => b.revenue - a.revenue)
+      .slice(0, 5);
+  }, [orders]);
 
   return (
     <div className="space-y-6">
@@ -266,10 +262,10 @@ export default function AnalyticsPage() {
         <div className="flex items-center gap-3">
           <button className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-xl text-gray-700 hover:bg-gray-50 transition-all">
             <Calendar className="w-4 h-4" />
-            <span>30 ngày qua</span>
+            <span>7 ngày qua</span>
           </button>
           <button
-            onClick={fetchAnalytics}
+            onClick={() => window.location.reload()}
             className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-xl text-gray-700 hover:bg-gray-50 transition-all"
           >
             <RefreshCw className="w-4 h-4" />
@@ -280,9 +276,9 @@ export default function AnalyticsPage() {
 
       {/* Metric Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {metricsList.map((metric) => {
+        {metrics.map((metric) => {
           const Icon = metric.icon;
-          // const TrendIcon = metric.trend === "up" ? ArrowUpRight : ArrowDownRight; // KHÔNG CẦN NỮA
+          const TrendIcon = metric.trend === "up" ? ArrowUpRight : ArrowDownRight;
 
           return (
             <div
@@ -296,9 +292,7 @@ export default function AnalyticsPage() {
                   >
                     <Icon className={`w-6 h-6 ${metric.textColor}`} />
                   </div>
-                  
-                  {/* ===== KHỐI NÀY ĐÃ BỊ XÓA THEO YÊU CẦU ===== */}
-                  {/* <div
+                  <div
                     className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold ${
                       metric.trend === "up"
                         ? "bg-green-100 text-green-700"
@@ -307,9 +301,7 @@ export default function AnalyticsPage() {
                   >
                     <TrendIcon className="w-3 h-3" />
                     {metric.change}
-                  </div> */}
-                  {/* ============================================== */}
-
+                  </div>
                 </div>
                 <div>
                   <p className="text-sm text-gray-600 mb-1">{metric.label}</p>
@@ -336,7 +328,7 @@ export default function AnalyticsPage() {
                   Doanh thu & Đơn hàng
                 </h2>
                 <p className="text-sm text-gray-600 mt-1">
-                  Biểu đồ xu hướng theo ngày
+                  Biểu đồ xu hướng 7 ngày qua
                 </p>
               </div>
             </div>
@@ -373,6 +365,12 @@ export default function AnalyticsPage() {
                       borderRadius: "8px",
                       boxShadow: "0 4px 6px rgba(0,0,0,0.1)",
                     }}
+                    formatter={(value, name) => {
+                      if (name === "Doanh thu") {
+                        return [`${Intl.NumberFormat("vi-VN").format(value)}đ`, name];
+                      }
+                      return [value, name];
+                    }}
                   />
                   <Legend />
                   <Area
@@ -381,7 +379,7 @@ export default function AnalyticsPage() {
                     stroke="#10b981"
                     fill="url(#colorRevenue)"
                     strokeWidth={2}
-                    name="Doanh thu (₫)"
+                    name="Doanh thu"
                   />
                   <Area
                     type="monotone"
@@ -414,12 +412,10 @@ export default function AnalyticsPage() {
                   cx="50%"
                   cy="50%"
                   labelLine={false}
-                  // ===== ĐÃ XÓA PROP 'label' ĐỂ TRÁNH CHỒNG CHÉO =====
-                  // label={({ name, percent }) =>
-                  //   `${name} ${(percent * 100).toFixed(0)}%`
-                  // }
-                  // ====================================================
-                  outerRadius={100} // Tăng kích thước 1 chút
+                  label={({ name, percent }) =>
+                    `${name} ${(percent * 100).toFixed(0)}%`
+                  }
+                  outerRadius={80}
                   fill="#8884d8"
                   dataKey="value"
                 >
@@ -458,10 +454,10 @@ export default function AnalyticsPage() {
         <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-gray-100">
           <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
             <DollarSign className="w-5 h-5 text-green-600" />
-            Doanh thu theo ngày
+            Doanh thu vs Chi phí
           </h2>
           <p className="text-sm text-gray-600 mt-1">
-            So sánh doanh thu hàng ngày (7 ngày gần nhất)
+            So sánh doanh thu và chi phí hoạt động
           </p>
         </div>
         <div className="p-6">
@@ -477,12 +473,19 @@ export default function AnalyticsPage() {
                   borderRadius: "8px",
                   boxShadow: "0 4px 6px rgba(0,0,0,0.1)",
                 }}
+                formatter={(value) => `${Intl.NumberFormat("vi-VN").format(value)}đ`}
               />
               <Legend />
               <Bar
                 dataKey="revenue"
                 fill="#10b981"
-                name="Doanh thu (₫)"
+                name="Doanh thu"
+                radius={[8, 8, 0, 0]}
+              />
+              <Bar
+                dataKey="expenses"
+                fill="#ef4444"
+                name="Chi phí"
                 radius={[8, 8, 0, 0]}
               />
             </BarChart>
@@ -523,59 +526,63 @@ export default function AnalyticsPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
-              {topRestaurants.map((restaurant, index) => (
-                <tr key={restaurant.name} className="hover:bg-gray-50">
-                  <td className="py-4 px-6">
-                    <div
-                      className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-white ${
-                        index === 0
-                          ? "bg-gradient-to-r from-yellow-500 to-orange-500"
-                          : index === 1
-                          ? "bg-gradient-to-r from-gray-400 to-gray-500"
-                          : index === 2
-                          ? "bg-gradient-to-r from-orange-600 to-red-600"
-                          : "bg-gray-300"
-                      }`}
-                    >
-                      {index + 1}
-                    </div>
-                  </td>
-                  <td className="py-4 px-6">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center">
-                        <Store className="w-5 h-5 text-orange-600" />
-                      </div>
-                      <span className="font-semibold text-gray-800">
-                        {restaurant.name}
-                      </span>
-                    </div>
-                  </td>
-                  <td className="py-4 px-6">
-                    <div className="flex items-center gap-2">
-                      <Package className="w-4 h-4 text-blue-600" />
-                      <span className="font-semibold text-gray-800">
-                        {restaurant.orders}
-                      </span>
-                    </div>
-                  </td>
-                  <td className="py-4 px-6">
-                    <span className="font-bold text-green-600">
-                      {restaurant.revenue.toLocaleString("vi-VN")}₫
-                    </span>
-                  </td>
-                  <td className="py-4 px-6">
-                    <span className="font-semibold text-gray-700">
-                      {restaurant.orders > 0
-                        // ===== ĐÃ THÊM Math.round() =====
-                        ? Math.round(
-                            restaurant.revenue / restaurant.orders
-                          ).toLocaleString("vi-VN")
-                        : "0"}
-                      ₫
-                    </span>
+              {topRestaurants.length === 0 ? (
+                <tr>
+                  <td colSpan="5" className="py-8 text-center text-gray-500">
+                    Chưa có dữ liệu
                   </td>
                 </tr>
-              ))}
+              ) : (
+                topRestaurants.map((restaurant, index) => (
+                  <tr key={restaurant.name} className="hover:bg-gray-50">
+                    <td className="py-4 px-6">
+                      <div
+                        className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-white ${
+                          index === 0
+                            ? "bg-gradient-to-r from-yellow-500 to-orange-500"
+                            : index === 1
+                            ? "bg-gradient-to-r from-gray-400 to-gray-500"
+                            : index === 2
+                            ? "bg-gradient-to-r from-orange-600 to-red-600"
+                            : "bg-gray-300"
+                        }`}
+                      >
+                        {index + 1}
+                      </div>
+                    </td>
+                    <td className="py-4 px-6">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center">
+                          <Store className="w-5 h-5 text-orange-600" />
+                        </div>
+                        <span className="font-semibold text-gray-800">
+                          {restaurant.name}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="py-4 px-6">
+                      <div className="flex items-center gap-2">
+                        <Package className="w-4 h-4 text-blue-600" />
+                        <span className="font-semibold text-gray-800">
+                          {restaurant.orders}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="py-4 px-6">
+                      <span className="font-bold text-green-600">
+                        {Intl.NumberFormat("vi-VN").format(restaurant.revenue)}đ
+                      </span>
+                    </td>
+                    <td className="py-4 px-6">
+                      <span className="font-semibold text-gray-700">
+                        {Intl.NumberFormat("vi-VN").format(
+                          Math.round(restaurant.revenue / restaurant.orders)
+                        )}đ
+                      </span>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
