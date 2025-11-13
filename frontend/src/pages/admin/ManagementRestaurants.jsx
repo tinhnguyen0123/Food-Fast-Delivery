@@ -12,6 +12,14 @@ import {
   Lock,
   Unlock,
   Trash2,
+  XCircle,
+  MapPin,
+  Phone,
+  FileText,
+  DollarSign,
+  Gauge,
+  Users,
+  Star,
 } from "lucide-react";
 import { toast } from "react-toastify";
 
@@ -82,7 +90,7 @@ export default function RestaurantsPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Xóa nhà hàng thất bại");
       setRestaurants((prev) => prev.filter((r) => r._id !== id));
-      toast.success(" Đã xóa nhà hàng");
+      toast.success("✅ Đã xóa nhà hàng");
     } catch (e) {
       console.error(e);
       toast.error(e.message || "Lỗi xóa nhà hàng");
@@ -101,7 +109,7 @@ export default function RestaurantsPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Thao tác thất bại");
       setRestaurants((prev) => prev.map((x) => (x._id === r._id ? data.data : x)));
-      toast.success(locked ? "Đã mở khóa nhà hàng" : "Đã khóa nhà hàng");
+      toast.success(locked ? "✅ Đã mở khóa nhà hàng" : "✅ Đã khóa nhà hàng");
     } catch (e) {
       toast.error(e.message);
     }
@@ -159,10 +167,6 @@ export default function RestaurantsPage() {
             <RefreshCw className="w-4 h-4" />
             Tải lại
           </button>
-          <button className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-orange-500 to-red-600 text-white rounded-xl hover:shadow-lg transition-all">
-            <Plus className="w-4 h-4" />
-            Thêm mới
-          </button>
         </div>
       </div>
 
@@ -184,14 +188,14 @@ export default function RestaurantsPage() {
           ))}
         </div>
 
-        <div className="relative">
+        <div className="relative w-full sm:w-64">
           <Search className="w-4 h-4 text-gray-400 absolute left-3 top-3" />
           <input
             type="text"
             placeholder="Tìm kiếm nhà hàng..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="pl-9 pr-3 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none"
+            className="pl-9 pr-3 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none w-full"
           />
         </div>
       </div>
@@ -288,6 +292,187 @@ export default function RestaurantsPage() {
           </div>
         )}
       </div>
+
+      {/* ✅ MODAL CHI TIẾT NHÀ HÀNG - CHỈ XEM */}
+      {selectedRestaurant && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
+          onClick={() => setSelectedRestaurant(null)}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="sticky top-0 bg-gradient-to-r from-orange-500 to-red-600 p-6 flex items-center justify-between">
+              <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+                <Store className="w-6 h-6" />
+                Chi tiết nhà hàng
+              </h2>
+              <button
+                onClick={() => setSelectedRestaurant(null)}
+                className="p-2 hover:bg-white/20 rounded-lg transition-colors"
+              >
+                <XCircle className="w-6 h-6 text-white" />
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="p-6 space-y-6">
+              {/* Ảnh nhà hàng */}
+              <div className="aspect-video rounded-xl overflow-hidden bg-gray-100">
+                {selectedRestaurant.image ? (
+                  <img
+                    src={selectedRestaurant.image}
+                    alt={selectedRestaurant.name}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center">
+                    <Store className="w-20 h-20 text-gray-300" />
+                  </div>
+                )}
+              </div>
+
+              {/* Thông tin cơ bản */}
+              <div className="space-y-4">
+                <div>
+                  <h3 className="text-3xl font-bold text-gray-800 mb-2">
+                    {selectedRestaurant.name}
+                  </h3>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span
+                      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border ${
+                        statusConfig[selectedRestaurant.status]?.color || statusConfig.pending.color
+                      } ${statusConfig[selectedRestaurant.status]?.border || statusConfig.pending.border}`}
+                    >
+                      {statusConfig[selectedRestaurant.status]?.label || "Chờ duyệt"}
+                    </span>
+                  </div>
+                </div>
+
+                {selectedRestaurant.description && (
+                  <div>
+                    <p className="text-sm font-semibold text-gray-600 mb-1 flex items-center gap-2">
+                      <FileText className="w-4 h-4" />
+                      Mô tả
+                    </p>
+                    <p className="text-gray-700">{selectedRestaurant.description}</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Thông tin liên hệ & địa chỉ */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-gray-50 rounded-xl">
+                {selectedRestaurant.phone && (
+                  <div>
+                    <p className="text-xs font-semibold text-gray-600 flex items-center gap-2 mb-1">
+                      <Phone className="w-4 h-4" />
+                      Số điện thoại
+                    </p>
+                    <p className="text-gray-800 font-medium">{selectedRestaurant.phone}</p>
+                  </div>
+                )}
+
+                {selectedRestaurant.email && (
+                  <div>
+                    <p className="text-xs font-semibold text-gray-600 mb-1">Email</p>
+                    <p className="text-gray-800 font-medium break-all">{selectedRestaurant.email}</p>
+                  </div>
+                )}
+
+                {selectedRestaurant.address && (
+                  <div className="md:col-span-2">
+                    <p className="text-xs font-semibold text-gray-600 flex items-center gap-2 mb-1">
+                      <MapPin className="w-4 h-4" />
+                      Địa chỉ
+                    </p>
+                    <p className="text-gray-800">{selectedRestaurant.address}</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Thông tin giao hàng & đơn hàng */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="p-4 bg-blue-50 rounded-xl border border-blue-200">
+                  <p className="text-xs font-semibold text-blue-600 flex items-center gap-2 mb-2">
+                    <DollarSign className="w-4 h-4" />
+                    Đơn hàng tối thiểu
+                  </p>
+                  <p className="text-2xl font-bold text-blue-700">
+                    {selectedRestaurant.minOrder
+                      ? Number(selectedRestaurant.minOrder).toLocaleString("vi-VN") + "₫"
+                      : "Không giới hạn"}
+                  </p>
+                </div>
+
+                <div className="p-4 bg-green-50 rounded-xl border border-green-200">
+                  <p className="text-xs font-semibold text-green-600 flex items-center gap-2 mb-2">
+                    <DollarSign className="w-4 h-4" />
+                    Phí giao hàng
+                  </p>
+                  <p className="text-2xl font-bold text-green-700">
+                    {selectedRestaurant.deliveryFee
+                      ? Number(selectedRestaurant.deliveryFee).toLocaleString("vi-VN") + "₫"
+                      : "Miễn phí"}
+                  </p>
+                </div>
+
+                <div className="p-4 bg-purple-50 rounded-xl border border-purple-200">
+                  <p className="text-xs font-semibold text-purple-600 flex items-center gap-2 mb-2">
+                    <Gauge className="w-4 h-4" />
+                    Bán kính giao
+                  </p>
+                  <p className="text-2xl font-bold text-purple-700">
+                    {selectedRestaurant.maxDeliveryDistance || "Không giới hạn"} km
+                  </p>
+                </div>
+
+                <div className="p-4 bg-orange-50 rounded-xl border border-orange-200">
+                  <p className="text-xs font-semibold text-orange-600 flex items-center gap-2 mb-2">
+                    <Clock className="w-4 h-4" />
+                    Thời gian tạo
+                  </p>
+                  <p className="text-sm font-medium text-orange-700">
+                    {selectedRestaurant.createdAt
+                      ? new Date(selectedRestaurant.createdAt).toLocaleDateString("vi-VN")
+                      : "N/A"}
+                  </p>
+                </div>
+              </div>
+
+              {/* Chủ sở hữu */}
+              {selectedRestaurant.ownerId && (
+                <div className="p-4 bg-gray-50 rounded-xl border border-gray-200">
+                  <p className="text-xs font-semibold text-gray-600 flex items-center gap-2 mb-3">
+                    <Users className="w-4 h-4" />
+                    Chủ sở hữu
+                  </p>
+                  <div className="space-y-2">
+                    <p className="text-gray-800">
+                      <span className="font-semibold">Tên:</span> {selectedRestaurant.ownerId.name}
+                    </p>
+                    <p className="text-gray-800">
+                      <span className="font-semibold">Email:</span>{" "}
+                      <span className="break-all">{selectedRestaurant.ownerId.email}</span>
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Footer - Close Button */}
+            <div className="border-t border-gray-200 p-6 bg-gray-50 flex justify-end">
+              <button
+                onClick={() => setSelectedRestaurant(null)}
+                className="px-6 py-2 bg-gray-300 hover:bg-gray-400 text-gray-800 rounded-lg font-semibold transition-colors"
+              >
+                Đóng
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
