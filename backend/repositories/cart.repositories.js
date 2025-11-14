@@ -16,9 +16,14 @@ class CartRepository {
 
   // Lấy giỏ hàng theo ID
  async getCartById(cartId) {
-    return await Cart.findById(cartId)
-      .populate("items.productId", "name price image restaurantId")
-      .populate("items.productId.restaurantId", "name address");
+    return await Cart.findById(cartId).populate({
+      path: "items.productId",
+      select: "name price image category restaurantId",
+      populate: {
+        path: "restaurantId",
+        select: "name address phone image status",
+      },
+    });
   }
 
   // Thêm sản phẩm vào giỏ hàng

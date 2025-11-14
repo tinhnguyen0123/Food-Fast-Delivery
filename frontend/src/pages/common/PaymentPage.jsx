@@ -22,7 +22,6 @@ L.Icon.Default.mergeOptions({
   shadowUrl,
 });
 
-// Component để cập nhật bản đồ khi position thay đổi
 function MapUpdater({ position }) {
   const map = useMap();
   useEffect(() => {
@@ -31,7 +30,6 @@ function MapUpdater({ position }) {
   return null;
 }
 
-// Component để handle click trên bản đồ
 function MapClickHandler({ setPosition, reverseGeocode }) {
   useMapEvents({
     click(e) {
@@ -57,7 +55,6 @@ export default function PaymentPage() {
     loadCart();
   }, []);
 
-  // Load giỏ hàng mới nhất
   const loadCart = async () => {
     try {
       const token = localStorage.getItem("token");
@@ -73,10 +70,9 @@ export default function PaymentPage() {
       const data = await res.json();
       setCart(data);
 
-      // 🔹 Hiển thị cảnh báo món bị loại
       if (data._sanitized && data._removedItems?.length) {
         data._removedItems.forEach((n) =>
-          toast.warning(`Món '${n}' đã bị loại khỏi giỏ (nhà hàng bị khóa)`)
+          toast.warning(`Món '${n}' đã bị loại khỏi giỏ vì không còn khả dụng`)
         );
       }
     } catch (e) {
@@ -86,7 +82,6 @@ export default function PaymentPage() {
     }
   };
 
-  // Tìm địa chỉ OpenStreetMap
   const doSearch = useCallback(async (q) => {
     if (!q) return setSuggestions([]);
     try {
@@ -108,7 +103,6 @@ export default function PaymentPage() {
     return () => clearTimeout(timer);
   }, [query, doSearch]);
 
-  // Reverse geocode từ lat/lng
   async function reverseGeocode(lat, lng) {
     try {
       const res = await fetch(
@@ -141,7 +135,6 @@ export default function PaymentPage() {
     }
   };
 
-  // Nhóm items theo nhà hàng
   const groupByRestaurant = () => {
     if (!cart?.items) return [];
 
@@ -172,24 +165,34 @@ export default function PaymentPage() {
     return Object.values(groups);
   };
 
-  // Tạo đơn hàng
+  // ✅ PHIÊN BẢN ĐÃ SỬA — CÓ GOM ID ĐƠN & TRACKING MAP
   const handleCreateOrders = async () => {
     if (!cart?.items?.length) {
       toast.error("Giỏ hàng trống");
       return;
     }
+    if (!address || !address.trim()) {
+      toast.error("Vui lòng chọn hoặc tìm kiếm địa chỉ giao hàng trên bản đồ.");
+      return;
+    }
 
-    // 🔹 Re-check giỏ hàng trước khi tạo đơn
     try {
       const token = localStorage.getItem("token");
       const res = await fetch("http://localhost:5000/api/cart/latest", {
         headers: { Authorization: `Bearer ${token}` },
       });
       const latest = await res.json();
+
       if (latest._sanitized) {
-        toast.warning(
-          "Giỏ hàng đã được cập nhật do nhà hàng bị khóa. Vui lòng kiểm tra lại."
-        );
+        if (Array.isArray(latest._removedItems) && latest._removedItems.length) {
+          latest._removedItems.forEach((name) =>
+            toast.error(`Món ăn '${name}' không còn khả dụng`)
+          );
+        } else {
+          toast.warning(
+            "Giỏ hàng đã được cập nhật do có món không còn khả dụng. Vui lòng kiểm tra lại."
+          );
+        }
         setCart(latest);
         return;
       }
@@ -203,66 +206,95 @@ export default function PaymentPage() {
     try {
       const token = localStorage.getItem("token");
       const user = JSON.parse(localStorage.getItem("user") || "{}");
-      const restaurantGroups = groupByRestaurant();
+        // 1. Gói tất cả thông tin vào một payload duy nhất
+      // Backend (order.services.js) của bạn đã hỗ trợ việc này
+      const orderPayload = {
+        userId: user.id || user._id,
+        items: cart.items.map((it) => ({
+          productId: it.productId._id || it.productId,
+          quantity: it.quantity,
+        })),
+        paymentMethod,
+        shippingAddress: { text: address, location: position },
+      };
 
-      for (const group of restaurantGroups) {
-        const payload = {
-          userId: user.id || user._id,
-          restaurantId: group.restaurantId,
-          items: group.items.map((it) => ({
-            productId: it.productId._id || it.productId,
-            quantity: it.quantity,
-            priceAtOrderTime: it.productId.price || it.priceAtOrderTime || 0,
-          })),
-          totalPrice: group.subtotal,
-          paymentMethod,
-          shippingAddress: { text: address, location: position },
-        };
+      // 2. Gọi API tạo đơn hàng (1 LẦN DUY NHẤT)
+      const orderRes = await fetch("http://localhost:5000/api/order", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(orderPayload),
+      });
 
-        const res = await fetch("http://localhost:5000/api/order", {
+      if (!orderRes.ok) {
+        const errorData = await orderRes.json();
+        throw new Error(errorData.message || "Tạo đơn hàng thất bại.");
+      }
+
+      const creationResponse = await orderRes.json();
+
+      // 3. Chuẩn hóa kết quả (backend có thể trả 1 object hoặc 1 array)
+      const createdOrders = Array.isArray(creationResponse)
+        ? creationResponse
+        : [creationResponse];
+
+      // 4. Nếu là COD, xử lý như cũ (xóa giỏ, chuyển trang)
+      if (paymentMethod === "COD") {
+        await clearCartOnServer(cart._id); // clearCartOnServer từ code cũ
+        toast.success("Tạo đơn thành công");
+        navigate("/orders");
+        return; // Kết thúc
+      }
+
+      // 5. Nếu là MOMO
+      if (paymentMethod === "MOMO") {
+        // 5a. Lấy danh sách ID và tổng tiền
+        const orderIds = createdOrders.map((o) => o._id);
+        const grandTotal = createdOrders.reduce(
+          (sum, o) => sum + o.totalPrice,
+          0
+        );
+
+        // 5b. Gọi API thanh toán (1 LẦN DUY NHẤT)
+        const payRes = await fetch(`http://localhost:5000/api/payment`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
           },
-          body: JSON.stringify(payload),
+          body: JSON.stringify({
+            orderIds: orderIds,
+            amount: grandTotal,
+            method: "MOMO",
+          }),
         });
 
-        if (!res.ok) throw new Error("Tạo đơn thất bại");
-        const created = await res.json();
+        if (!payRes.ok) {
+          const payErrorData = await payRes.json().catch(() => ({}));
+          throw new Error(payErrorData.message || "Không thể tạo thanh toán MoMo");
+        }
 
-        if (paymentMethod === "VNPAY") {
-          const payRes = await fetch(`http://localhost:5000/api/payment`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${token}`,
-            },
-            body: JSON.stringify({
-              orderId: created._id,
-              amount: created.totalPrice,
-              method: "VNPAY",
-            }),
-          });
-
-          if (payRes.ok) {
-            const payData = await payRes.json();
-            if (payData.paymentUrl) {
-              window.location.href = payData.paymentUrl;
-              return;
-            }
-          }
+        const payData = await payRes.json();
+        if (payData.paymentUrl) {
+          // 5c. Chuyển hướng tới MoMo.
+          // QUAN TRỌNG: KHÔNG XÓA GIỎ HÀNG Ở ĐÂY
+          localStorage.setItem("currentCartId", cart._id);
+          window.location.href = payData.paymentUrl;
+          return;
+        }
+          throw new Error("Không thể tạo thanh toán MoMo");
         }
       }
-
-      await clearCartOnServer(cart._id);
-      toast.success("Tạo đơn thành công");
-      navigate("/orders");
-    } catch (err) {
-      console.error("Create order error:", err);
-      toast.error(err.message || "Lỗi khi tạo đơn");
-    } finally {
-      setCreating(false);
+      catch (err) {
+          console.error("Create order error:", err);
+          toast.error(err.message || "Lỗi khi tạo đơn");
+        } finally {
+          // Chỉ setCreating(false) nếu không phải chuyển hướng MoMo
+          if (paymentMethod !== "MOMO") {
+            setCreating(false);
+          }
     }
   };
 
@@ -316,7 +348,10 @@ export default function PaymentPage() {
             >
               <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
               <Marker position={[position.lat, position.lng]} />
-              <MapClickHandler setPosition={setPosition} reverseGeocode={reverseGeocode} />
+              <MapClickHandler
+                setPosition={setPosition}
+                reverseGeocode={reverseGeocode}
+              />
               <MapUpdater position={position} />
             </MapContainer>
           </div>
@@ -337,7 +372,7 @@ export default function PaymentPage() {
             className="border p-3 rounded-lg w-full"
           >
             <option value="COD">💵 Thanh toán khi nhận (COD)</option>
-            <option value="VNPAY">💳 VNPAY (online)</option>
+            <option value="MOMO">💳 Ví MoMo (online)</option>
           </select>
         </div>
       </div>
@@ -356,8 +391,12 @@ export default function PaymentPage() {
               <div className="flex items-center gap-2 mb-3 pb-2 border-b">
                 <span className="text-lg">🏪</span>
                 <div>
-                  <h4 className="font-semibold text-base">{group.restaurantName}</h4>
-                  <p className="text-xs text-gray-500">{group.items.length} món</p>
+                  <h4 className="font-semibold text-base">
+                    {group.restaurantName}
+                  </h4>
+                  <p className="text-xs text-gray-500">
+                    {group.items.length} món
+                  </p>
                 </div>
               </div>
 
@@ -389,7 +428,9 @@ export default function PaymentPage() {
 
               <div className="flex justify-between mt-3 pt-2 border-t text-sm">
                 <span className="text-gray-600">Tạm tính</span>
-                <span className="font-semibold">{group.subtotal.toLocaleString("vi-VN")}₫</span>
+                <span className="font-semibold">
+                  {group.subtotal.toLocaleString("vi-VN")}₫
+                </span>
               </div>
             </div>
           ))}
@@ -398,7 +439,9 @@ export default function PaymentPage() {
         <div className="border-t pt-4">
           <div className="flex justify-between mb-4 text-lg">
             <span className="font-bold">Tổng cộng</span>
-            <span className="text-2xl font-bold text-green-600">{total.toLocaleString("vi-VN")}₫</span>
+            <span className="text-2xl font-bold text-green-600">
+              {total.toLocaleString("vi-VN")}₫
+            </span>
           </div>
 
           <div className="flex gap-3">

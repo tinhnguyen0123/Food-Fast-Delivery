@@ -3,6 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import { ArrowLeft } from "lucide-react";
 
+const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:5000";
+
 export default function CartPage() {
   const navigate = useNavigate();
   const [cart, setCart] = useState(null);
@@ -22,7 +24,7 @@ export default function CartPage() {
         return;
       }
 
-      const res = await fetch("http://localhost:5000/api/cart/latest", {
+      const res = await fetch(`${API_BASE}/api/cart/latest`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -46,12 +48,10 @@ export default function CartPage() {
       const data = await res.json();
       setCart(data);
 
-      // 🔹 Hiển thị cảnh báo món bị xóa
+      // Hiển thị cảnh báo món bị xóa
       if (data._sanitized && Array.isArray(data._removedItems)) {
         data._removedItems.forEach((name) =>
-          toast.warning(
-            `Món '${name}' đã bị xóa vì nhà hàng không còn khả dụng`
-          )
+          toast.warning(`Món '${name}' đã bị xóa vì không còn khả dụng`)
         );
       }
     } catch (err) {
@@ -63,28 +63,34 @@ export default function CartPage() {
   };
 
   const handleUpdateQuantity = async (productId, newQuantity) => {
-    if (newQuantity < 1) return;
+    // ✅ Cho phép giảm về 0 -> xóa món
+    if (newQuantity <= 0) {
+      await handleRemoveItem(productId);
+      return;
+    }
 
     const previousCart = { ...cart };
+    const idOf = (it) =>
+      ((it.productId && (it.productId._id || it.productId)) || "").toString();
+
+    // Optimistic update
     setCart((prevCart) => {
-      const newItems = prevCart.items.map((item) =>
-        item.productId._id === productId
-          ? { ...item, quantity: newQuantity }
-          : item
+      const newItems = (prevCart.items || []).map((item) =>
+        idOf(item) === productId.toString() ? { ...item, quantity: newQuantity } : item
       );
       const newTotal = newItems.reduce(
         (sum, item) =>
-          sum + Number(item.productId.price) * item.quantity,
+          sum +
+          Number(item.productId.price || item.priceAtOrderTime || 0) * item.quantity,
         0
       );
       return { ...prevCart, items: newItems, totalPrice: newTotal };
     });
 
     setUpdating(true);
-
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch("http://localhost:5000/api/cart/add", {
+      const res = await fetch(`${API_BASE}/api/cart/add`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -100,19 +106,16 @@ export default function CartPage() {
       if (!res.ok) throw new Error("Failed to update quantity");
 
       const updatedCart = await res.json();
-      setCart(updatedCart); // Cập nhật giỏ hàng từ API
-      toast.success("Cập nhật số lượng thành công");
+      setCart(updatedCart);
 
-      // 🔹 Hiển thị cảnh báo món bị xóa
       if (updatedCart._sanitized && Array.isArray(updatedCart._removedItems)) {
         updatedCart._removedItems.forEach((name) =>
-          toast.warning(
-            `Món '${name}' đã bị xóa vì nhà hàng không còn khả dụng`
-          )
+          toast.warning(`Món '${name}' đã bị xóa vì nhà hàng không còn khả dụng`)
         );
       }
+      toast.success("Cập nhật số lượng thành công");
     } catch (err) {
-      setCart(previousCart); // Khôi phục giỏ hàng cũ nếu lỗi
+      setCart(previousCart);
       console.error("Update quantity error:", err);
       toast.error(err.message || "Lỗi khi cập nhật số lượng");
     } finally {
@@ -122,7 +125,6 @@ export default function CartPage() {
 
   const handleRemoveItem = async (productId) => {
     const previousCart = { ...cart };
-
     const idOf = (it) =>
       ((it.productId && (it.productId._id || it.productId)) || "").toString();
 
@@ -132,17 +134,15 @@ export default function CartPage() {
     const newTotal = newItems.reduce(
       (sum, item) =>
         sum +
-        Number(item.productId.price || item.priceAtOrderTime || 0) *
-          item.quantity,
+        Number(item.productId.price || item.priceAtOrderTime || 0) * item.quantity,
       0
     );
     setCart({ ...cart, items: newItems, totalPrice: newTotal });
 
     setUpdating(true);
-
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch("http://localhost:5000/api/cart/remove", {
+      const res = await fetch(`${API_BASE}/api/cart/remove`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -162,6 +162,31 @@ export default function CartPage() {
       setCart(previousCart);
       console.error("Remove item error:", err);
       toast.error(err.message || "Lỗi khi xóa món");
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  const handleClearCart = async () => {
+    if (!cart || !cart._id) return;
+    const previousCart = { ...cart };
+    setUpdating(true);
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(`${API_BASE}/api/cart/${cart._id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) {
+        const err = await res.text();
+        throw new Error(err || "Không thể xóa giỏ hàng");
+      }
+      setCart(null);
+      toast.success("Đã xóa tất cả món trong giỏ");
+    } catch (err) {
+      setCart(previousCart);
+      console.error("Clear cart error:", err);
+      toast.error(err.message || "Lỗi khi xóa giỏ hàng");
     } finally {
       setUpdating(false);
     }
@@ -237,7 +262,7 @@ export default function CartPage() {
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-2xl font-bold">Giỏ hàng của bạn</h2>
         <button
-          onClick={() => navigate("/restaurants")}
+          onClick={() => navigate("/products")}
           className="flex items-center gap-2 bg-white border border-blue-500 text-blue-600 px-4 py-2 rounded-lg hover:bg-blue-50 shadow-sm transition-all duration-200"
         >
           <ArrowLeft className="w-4 h-4" />
@@ -323,21 +348,31 @@ export default function CartPage() {
           ))}
         </div>
 
-        <div className="bg-gray-50 p-6 border-t">
-          <div className="flex justify-between mb-4 text-lg">
+        <div className="bg-gray-50 p-6 border-t flex flex-col gap-4">
+          <div className="flex justify-between text-lg">
             <span className="font-semibold">Tổng tiền:</span>
             <span className="text-2xl font-bold text-green-600">
               {Number(cart.totalPrice)?.toLocaleString("vi-VN")}₫
             </span>
           </div>
 
-          <button
-            onClick={handleCheckout}
-            disabled={updating}
-            className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition disabled:opacity-50 font-semibold"
-          >
-            {updating ? "Đang xử lý..." : "Tiến hành đặt hàng"}
-          </button>
+          <div className="flex gap-4">
+            <button
+              onClick={handleCheckout}
+              disabled={updating}
+              className="flex-1 bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition disabled:opacity-50 font-semibold"
+            >
+              {updating ? "Đang xử lý..." : "Tiến hành đặt hàng"}
+            </button>
+
+            <button
+              onClick={handleClearCart}
+              disabled={!cart || updating}
+              className="bg-red-500 text-white px-4 py-3 rounded-lg hover:bg-red-600 disabled:opacity-50 font-semibold"
+            >
+              Xóa tất cả
+            </button>
+          </div>
         </div>
       </div>
     </div>

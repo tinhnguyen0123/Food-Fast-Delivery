@@ -71,7 +71,7 @@ class DroneController {
     }
   }
 
-  // ✅ Gán drone thủ công cho 1 đơn hàng
+  // ✅ Gán drone thủ công cho 1 đơn hàng (CHƯA bay)
   async assign(req, res) {
     try {
       const { droneId, orderId } = req.body;
@@ -82,7 +82,18 @@ class DroneController {
     }
   }
 
-  // ✅ Phân bổ tự động tất cả đơn "preparing" cho drone "idle"
+  // ✅ Bắt đầu giao (nhà hàng bấm nút)
+  async startDelivery(req, res) {
+    try {
+      const { deliveryId } = req.body;
+      const result = await DroneService.startDelivery(deliveryId);
+      res.status(200).json(result);
+    } catch (e) {
+      res.status(400).json({ message: e.message });
+    }
+  }
+
+  // ✅ Phân bổ tự động tất cả đơn "ready" cho drone "idle"
   async autoAssign(req, res) {
     try {
       const restaurantId = req.body.restaurantId || req.params.restaurantId;

@@ -16,6 +16,9 @@ import droneRouter from "./routes/drone.routes.js";
 import locationRouter from "./routes/location.routes.js";
 import cors from "cors";
 
+import DroneMovementService from "./services/droneMovement.services.js";
+
+
 const app = express();
 const PORT = process.env.PORT || 5000;
 
@@ -65,6 +68,19 @@ app.get("/api/health", (req, res) => {
     message: "Server is running fine!",
   });
 });
+
+process.on("SIGINT", () => {
+  console.log("\n🛑 Stopping all drone movements...");
+  DroneMovementService.stopAll();
+  process.exit(0);
+});
+
+process.on("SIGTERM", () => {
+  console.log("\n🛑 Stopping all drone movements...");
+  DroneMovementService.stopAll();
+  process.exit(0);
+});
+
 
 // ✅ Khởi động server
 app.listen(PORT, () => {

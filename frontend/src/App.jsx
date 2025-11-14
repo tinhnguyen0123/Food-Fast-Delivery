@@ -18,6 +18,7 @@ import CartPage from "./pages/common/CartPage"
 import OrdersPage from "./pages/common/OrdersPage"
 import OrderDetailPage from "./pages/common/OrderDetailPage"
 import PaymentPage from "./pages/common/PaymentPage"
+import PaymentStatusPage from "./pages/common/PaymentStatusPage"
 import RestaurantsPage from "./pages/common/RestaurantsPage"
 
 // Restaurant pages
@@ -124,6 +125,16 @@ function App() {
               </ProtectedRoute>
             }
           />
+
+          <Route
+            path="/orders/payment-status"
+            element={
+              <ProtectedRoute allowedRoles={['customer']}>
+                <PaymentStatusPage />
+              </ProtectedRoute>
+            }
+          />
+
           <Route
             path="/orders/:id"
             element={
@@ -137,6 +148,15 @@ function App() {
             element={
               <ProtectedRoute allowedRoles={['customer']}>
                 <PaymentPage />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/payment-status"
+            element={
+              <ProtectedRoute allowedRoles={['customer']}>
+                <PaymentStatusPage />
               </ProtectedRoute>
             }
           />

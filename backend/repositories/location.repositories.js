@@ -22,8 +22,9 @@ class LocationRepository {
     return await Location.find({ type }).sort({ createdAt: -1 });
   }
 
-  // Cập nhật location
+  // Cập nhật location (có thể dùng để cập nhật vị trí drone)
   async updateLocation(locationId, updateData) {
+    // Chỉ cập nhật các trường được gửi lên (ví dụ coords)
     return await Location.findByIdAndUpdate(locationId, updateData, { new: true });
   }
 

@@ -7,7 +7,7 @@ const droneSchema = new mongoose.Schema(
     restaurantId: { type: mongoose.Schema.Types.ObjectId, ref: "Restaurant", required: true },
     status: {
       type: String,
-      enum: ["idle", "delivering", "charging", "maintenance"],
+      enum: ["idle", "delivering","returning  ", "charging", "maintenance"],
       default: "idle",
     },
     batteryLevel: { type: Number, default: 100, min: 0, max: 100 }, // ✅ pin (%)

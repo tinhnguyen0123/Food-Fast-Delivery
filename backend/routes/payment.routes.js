@@ -4,6 +4,9 @@ import { verifyToken } from "../middlewares/auth.js";
 
 const paymentRouter = express.Router();
 
+// 🔹 MỚI: Route nhận IPN từ MoMo (Không cần verifyToken)
+paymentRouter.post("/momo_ipn", PaymentController.handleMomoIPN);
+
 // CRUD routes
 paymentRouter.post("/", verifyToken, PaymentController.create);
 paymentRouter.get("/:id", verifyToken, PaymentController.getById);

@@ -23,16 +23,17 @@ const OrderSchema = new mongoose.Schema(
       default: "pending",
     },
     totalPrice: { type: Number, required: true, min: 0 },
-    paymentMethod: { type: String, enum: ["COD", "VNPAY"], default: "COD" },
-    paymentId: { type: mongoose.Schema.Types.ObjectId, ref: "Payment" },
-    deliveryId: { type: mongoose.Schema.Types.ObjectId, ref: "Delivery" },
     shippingAddress: {
-      text: String,
+      text: { type: String },
       location: {
-        lat: Number,
-        lng: Number,
+        lat: { type: Number },
+        lng: { type: Number },
       },
     },
+    paymentMethod: { type: String, enum: ["COD", "MOMO"], default: "COD" },
+    paymentId: { type: mongoose.Schema.Types.ObjectId, ref: "Payment" },
+    deliveryId: { type: mongoose.Schema.Types.ObjectId, ref: "Delivery" },
+    arrivedNotified: { type: Boolean, default: false }, // ✅ Flag để frontend biết drone đã tới
   },
   { timestamps: true }
 );
