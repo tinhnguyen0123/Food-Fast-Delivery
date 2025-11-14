@@ -187,9 +187,20 @@ export default function OrdersPage() {
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ deliveryId: order.deliveryId }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || "Không thể bắt đầu giao");
-      const updatedOrder = { ...data.order, status: "delivering" };
+
+      const text = await res.text();
+      let data = {};
+      try { data = text ? JSON.parse(text) : {}; } catch { data = {}; }
+
+      if (!res.ok) {
+        throw new Error(data.message || `Không thể bắt đầu giao (HTTP ${res.status})`);
+      }
+
+      // Fallback: nếu backend không trả order, dùng order hiện tại + status mới
+      const updatedOrder = data.order && data.order._id
+        ? data.order
+        : { ...order, status: "delivering" };
+
       setOrders((prev) => prev.map((o) => (o._id === order._id ? updatedOrder : o)));
       if (selectedOrder?._id === order._id) setSelectedOrder(updatedOrder);
       toast.success("Đã bắt đầu giao");
@@ -200,7 +211,7 @@ export default function OrdersPage() {
   };
 
   const cancelOrder = async (orderId) => {
-    if (!window.confirm("Bạn có chắc muốn hủy đơn hàng này?")) return;
+   if (!window.confirm("Bạn có chắc muốn hủy đơn hàng này?")) return;
 
     try {
       const res = await fetch(`${API_BASE}/api/order/${orderId}`, {
