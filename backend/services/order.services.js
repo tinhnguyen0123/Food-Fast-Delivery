@@ -146,27 +146,60 @@ class OrderService {
     return deleted;
   }
 
-  // ✅ Khách hàng xác nhận đã nhận hàng
+    // ✅ Khách hàng xác nhận đã nhận hàng
   async confirmCompletedByCustomer(orderId, userId) {
     const order = await OrderRepository.getOrderById(orderId);
     if (!order) throw new Error("Không tìm thấy đơn hàng");
 
+    // Kiểm tra đúng user
     if (String(order.userId?._id || order.userId) !== String(userId)) {
       throw new Error("Bạn không thể xác nhận đơn hàng không thuộc về bạn");
     }
 
-    if (order.status !== "delivering") throw new Error("Chỉ có thể xác nhận khi đơn đang giao");
-
-    // Dừng movement nếu drone đang di chuyển
-    const delivery = order.deliveryId ? await DeliveryRepository.getDeliveryById(order.deliveryId) : null;
-    if (delivery?.droneId) {
-      DroneMovementService.stopMovement(delivery.droneId);
+    // Chỉ cho xác nhận khi đơn đang giao
+    if (order.status !== "delivering") {
+      throw new Error("Chỉ có thể xác nhận khi đơn đang giao");
     }
 
-    // Cập nhật trạng thái đơn hàng
-    const updatedOrder = await this.updateOrder(orderId, { status: "completed" });
+    // Lấy thông tin giao hàng
+    const delivery = order.deliveryId
+      ? await DeliveryRepository.getDeliveryById(order.deliveryId)
+      : null;
+
+    // ⚡ Không dừng movement ngay lập tức — Drone đang ở trạng thái "arrived"
+    // Cập nhật trạng thái đơn & delivery
+    const updatedOrder = await OrderRepository.updateOrder(orderId, {
+      status: "completed",
+    });
+
+    if (delivery?._id) {
+      await DeliveryRepository.updateDelivery(delivery._id, {
+        status: "completed",
+        completedAt: new Date(),
+      });
+    }
+
+    // 🔋 Giảm pin 15%, đổi sang trạng thái returning
+    if (delivery?.droneId) {
+      const drone = delivery.droneId;
+      const newBattery = Math.max(0, (drone.batteryLevel ?? 100) - 15);
+
+      await DroneRepository.updateDrone(drone._id, {
+        batteryLevel: newBattery,
+        status: "returning",
+      });
+
+      // 🔁 Bắt đầu lộ trình quay về nhà hàng
+      setImmediate(() => {
+        DroneMovementService.startReturnToBase(delivery).catch((err) =>
+          console.error("Return movement error:", err)
+        );
+      });
+    }
+
     return updatedOrder;
   }
+
 }
 
 export default new OrderService();

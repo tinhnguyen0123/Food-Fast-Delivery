@@ -12,7 +12,10 @@ import {
   TrendingUp,
   CheckCircle,
   AlertCircle,
-  X
+  X,
+  Search,
+  SortAsc,
+  SortDesc
 } from "lucide-react";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:5000";
@@ -29,6 +32,12 @@ export default function DronesPage() {
     batteryLevel: 100,
     capacity: 5,
   });
+  const [droneSearch, setDroneSearch] = useState("");
+  const [orderSearch, setOrderSearch] = useState("");
+  const [sortBy, setSortBy] = useState("name");
+  const [sortOrder, setSortOrder] = useState("asc");
+  const [showAssignModal, setShowAssignModal] = useState(false);
+  const [selectedOrderForAssign, setSelectedOrderForAssign] = useState(null);
 
   const token = localStorage.getItem("token");
 
@@ -111,6 +120,8 @@ export default function DronesPage() {
       toast.success(" Đã gán drone cho đơn hàng!");
       setPendingOrders((prev) => prev.filter((o) => o._id !== orderId));
       setDrones((prev) => prev.map((d) => (d._id === droneId ? { ...d, status: "delivering" } : d)));
+      setShowAssignModal(false);
+      setSelectedOrderForAssign(null);
     } catch (e) {
       console.error(e);
       toast.error(e.message || "Lỗi gán drone");
@@ -176,10 +187,11 @@ export default function DronesPage() {
   // Helper functions
   const getStatusBadge = (status) => {
     const badges = {
-      idle: { color: "bg-green-100 text-green-700 border-green-200", icon: CheckCircle, text: "Sẵn sàng" },
-      delivering: { color: "bg-blue-100 text-blue-700 border-blue-200", icon: Plane, text: "Đang giao" },
-      charging: { color: "bg-yellow-100 text-yellow-700 border-yellow-200", icon: Battery, text: "Đang sạc" },
-      maintenance: { color: "bg-red-100 text-red-700 border-red-200", icon: AlertCircle, text: "Bảo trì" },
+      idle: { color: "bg-green-100 text-green-800", text: "Sẵn sàng" },
+      delivering: { color: "bg-blue-100 text-blue-800", text: "Đang giao" },
+      returning: { color: "bg-purple-100 text-purple-800", text: "Đang quay về" },
+      charging: { color: "bg-yellow-100 text-yellow-800", text: "Đang sạc" },
+      maintenance: { color: "bg-red-100 text-red-800", text: "Bảo trì" },
     };
     return badges[status] || badges.idle;
   };
@@ -190,11 +202,37 @@ export default function DronesPage() {
     return "text-red-600";
   };
 
+  const filteredPendingOrders = pendingOrders.filter((o) => {
+    const q = orderSearch.toLowerCase();
+    return (
+      o._id.toLowerCase().includes(q) ||
+      (o.shippingAddress?.text || "").toLowerCase().includes(q)
+    );
+  });
+
+  const filteredAndSortedDrones = drones
+    .filter((d) => {
+      const q = droneSearch.toLowerCase();
+      return (
+        (d.name || "").toLowerCase().includes(q) ||
+        (d.code || "").toLowerCase().includes(q) ||
+        d._id.toLowerCase().includes(q)
+      );
+    })
+    .sort((a, b) => {
+      let compare = 0;
+      if (sortBy === "name") compare = (a.name || "").localeCompare(b.name || "");
+      if (sortBy === "batteryLevel") compare = (a.batteryLevel || 0) - (b.batteryLevel || 0);
+      if (sortBy === "capacity") compare = (a.capacity || 0) - (b.capacity || 0);
+      if (sortBy === "status") compare = (a.status || "").localeCompare(b.status || "");
+      return sortOrder === "asc" ? compare : -compare;
+    });
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
         <div className="text-center">
-          <div className="animate-spin h-12 w-12 border-4 border-purple-600 border-t-transparent rounded-full mx-auto mb-4" />
+          <div className="animate-spin h-12 w-12 border-4 border-blue-600 border-t-transparent rounded-full mx-auto mb-4" />
           <p className="text-gray-600">Đang tải thông tin drone...</p>
         </div>
       </div>
@@ -202,31 +240,34 @@ export default function DronesPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-4 bg-gray-100 min-h-screen">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-6 rounded-lg shadow-md">
         <div>
-          <h1 className="text-2xl font-bold text-gray-800">Quản lý Drone</h1>
-          <p className="text-gray-600 mt-1">Theo dõi trạng thái và gán đơn cho drone</p>
+          <h1 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
+            <Plane className="w-7 h-7 text-blue-600" />
+            Quản lý Drone
+          </h1>
+          <p className="text-gray-600 mt-1">Theo dõi trạng thái và gán đơn cho drone như trên nền tảng thương mại điện tử</p>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex gap-3">
           <button
-            onClick={() => setShowAdd(!showAdd)}
-            className="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-4 py-2 rounded-xl font-semibold hover:shadow-lg transition-all duration-200 flex items-center gap-2"
+            onClick={() => setShowAdd(true)}
+            className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-md font-semibold hover:shadow-lg transition-all duration-200"
           >
             <Plus className="w-4 h-4" />
             Thêm Drone
           </button>
           <button
             onClick={autoAssign}
-            className="bg-gradient-to-r from-blue-600 to-cyan-600 text-white px-4 py-2 rounded-xl font-semibold hover:shadow-lg transition-all duration-200 flex items-center gap-2"
+            className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-md font-semibold hover:shadow-lg transition-all duration-200"
           >
             <Zap className="w-4 h-4" />
             Tự động phân bổ
           </button>
           <button
             onClick={loadData}
-            className="bg-white border-2 border-gray-300 text-gray-700 px-4 py-2 rounded-xl font-semibold hover:bg-gray-50 transition-all duration-200 flex items-center gap-2"
+            className="flex items-center gap-2 px-4 py-2 bg-white border-2 border-gray-300 text-gray-700 rounded-md font-semibold hover:bg-gray-50 transition-all duration-200"
           >
             <RefreshCw className="w-4 h-4" />
             Tải lại
@@ -236,311 +277,300 @@ export default function DronesPage() {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl p-6 text-white shadow-lg">
+        <div className="bg-white rounded-lg p-6 shadow-md border border-gray-200">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-blue-100 text-sm mb-1">Tổng drone</p>
-              <p className="text-3xl font-bold">{drones.length}</p>
+              <p className="text-gray-500 text-sm mb-1">Tổng drone</p>
+              <p className="text-3xl font-bold text-gray-800">{drones.length}</p>
             </div>
-            <Plane className="w-12 h-12 text-white/30" />
+            <Plane className="w-12 h-12 text-gray-300" />
           </div>
         </div>
-
-        <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-xl p-6 text-white shadow-lg">
+        <div className="bg-white rounded-lg p-6 shadow-md border border-gray-200">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-green-100 text-sm mb-1">Sẵn sàng</p>
-              <p className="text-3xl font-bold">{idleDrones.length}</p>
+              <p className="text-gray-500 text-sm mb-1">Sẵn sàng</p>
+              <p className="text-3xl font-bold text-green-600">{idleDrones.length}</p>
             </div>
-            <CheckCircle className="w-12 h-12 text-white/30" />
+            <CheckCircle className="w-12 h-12 text-gray-300" />
           </div>
         </div>
-
-        <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl p-6 text-white shadow-lg">
+        <div className="bg-white rounded-lg p-6 shadow-md border border-gray-200">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-purple-100 text-sm mb-1">Đang hoạt động</p>
-              <p className="text-3xl font-bold">{activeDrones.length}</p>
+              <p className="text-gray-500 text-sm mb-1">Đang hoạt động</p>
+              <p className="text-3xl font-bold text-blue-600">{activeDrones.length}</p>
             </div>
-            <TrendingUp className="w-12 h-12 text-white/30" />
+            <TrendingUp className="w-12 h-12 text-gray-300" />
           </div>
         </div>
-
-        <div className="bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl p-6 text-white shadow-lg">
+        <div className="bg-white rounded-lg p-6 shadow-md border border-gray-200">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-orange-100 text-sm mb-1">Đơn chờ gán</p>
-              <p className="text-3xl font-bold">{pendingOrders.length}</p>
+              <p className="text-gray-500 text-sm mb-1">Đơn chờ gán</p>
+              <p className="text-3xl font-bold text-orange-600">{pendingOrders.length}</p>
             </div>
-            <Clock className="w-12 h-12 text-white/30" />
+            <Clock className="w-12 h-12 text-gray-300" />
           </div>
         </div>
       </div>
-
-      {/* Add Drone Form */}
-      {showAdd && (
-        <div className="bg-white rounded-xl shadow-lg p-6">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="text-xl font-bold text-gray-800 flex items-center gap-2">
-              <Plus className="w-6 h-6 text-purple-600" />
-              Thêm Drone mới
-            </h3>
-            <button
-              onClick={() => setShowAdd(false)}
-              className="text-gray-400 hover:text-gray-600 transition-colors"
-            >
-              <X className="w-6 h-6" />
-            </button>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Mã drone <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                placeholder="VD: DRN001"
-                value={newDrone.code}
-                onChange={(e) => setNewDrone((p) => ({ ...p, code: e.target.value }))}
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Tên hiển thị
-              </label>
-              <input
-                type="text"
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                placeholder="VD: Drone Xanh"
-                value={newDrone.name}
-                onChange={(e) => setNewDrone((p) => ({ ...p, name: e.target.value }))}
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Pin (%)
-              </label>
-              <input
-                type="number"
-                min="0"
-                max="100"
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                placeholder="100"
-                value={newDrone.batteryLevel}
-                onChange={(e) => setNewDrone((p) => ({ ...p, batteryLevel: Number(e.target.value) }))}
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Tải tối đa (kg)
-              </label>
-              <input
-                type="number"
-                min="1"
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                placeholder="5"
-                value={newDrone.capacity}
-                onChange={(e) => setNewDrone((p) => ({ ...p, capacity: Number(e.target.value) }))}
-              />
-            </div>
-          </div>
-
-          <div className="flex justify-end gap-3 mt-6">
-            <button
-              onClick={() => setShowAdd(false)}
-              className="px-6 py-3 bg-gray-200 text-gray-700 rounded-xl font-semibold hover:bg-gray-300 transition-colors"
-            >
-              Hủy
-            </button>
-            <button
-              onClick={createDrone}
-              className="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-6 py-3 rounded-xl font-semibold hover:shadow-lg transition-all duration-200"
-            >
-              Tạo Drone
-            </button>
-          </div>
-        </div>
-      )}
 
       {/* Main Content Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Pending Orders */}
-        <div className="bg-white rounded-xl shadow-lg overflow-hidden">
-          <div className="bg-gradient-to-r from-orange-500 to-red-500 p-4">
-            <h3 className="text-xl font-bold text-white flex items-center gap-2">
-              <Clock className="w-6 h-6" />
-              Đơn hàng chờ gán ({pendingOrders.length})
-            </h3>
+        <div>
+          <div className="bg-white rounded-lg shadow-md p-4 mb-4">
+            <div className="flex items-center gap-4">
+              <div className="flex-1 relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Tìm kiếm đơn hàng..."
+                  value={orderSearch}
+                  onChange={(e) => setOrderSearch(e.target.value)}
+                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                />
+              </div>
+            </div>
           </div>
-
-          <div className="p-4">
-            {pendingOrders.length === 0 ? (
-              <div className="text-center py-12">
-                <Package className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                <p className="text-gray-500">Không có đơn hàng chờ gán</p>
-              </div>
-            ) : (
-              <div className="space-y-4 max-h-[600px] overflow-y-auto">
-                {pendingOrders.map((order) => (
-                  <div
-                    key={order._id}
-                    className="border-2 border-gray-200 rounded-xl p-4 hover:border-orange-300 transition-all"
-                  >
-                    {/* Order Header */}
-                    <div className="flex justify-between items-start mb-3">
-                      <div>
-                        <p className="font-bold text-gray-800">
-                          Đơn #{order._id.slice(-8)}
-                        </p>
-                        <p className="text-sm text-gray-600 flex items-center gap-1 mt-1">
-                          <MapPin className="w-4 h-4" />
-                          {order.shippingAddress?.text || "Địa chỉ không rõ"}
-                        </p>
-                      </div>
-                      <span className="px-3 py-1 bg-orange-100 text-orange-700 rounded-full text-xs font-semibold">
-                        Chờ gán
-                      </span>
-                    </div>
-
-                    {/* Available Drones */}
-                    <div>
-                      <p className="text-sm font-semibold text-gray-700 mb-2">
-                        Drone khả dụng:
-                      </p>
-                      {idleDrones.length === 0 ? (
-                        <p className="text-sm text-gray-500 bg-gray-50 p-3 rounded-lg">
-                          Không có drone sẵn sàng
-                        </p>
-                      ) : (
-                        <div className="grid grid-cols-1 gap-2">
-                          {idleDrones.map((drone) => (
-                            <button
-                              key={drone._id}
-                              onClick={() => assignDrone(drone._id, order._id)}
-                              className="w-full bg-gradient-to-r from-green-50 to-emerald-50 hover:from-green-100 hover:to-emerald-100 border-2 border-green-200 rounded-lg p-3 text-left transition-all duration-200 hover:shadow-md"
-                            >
-                              <div className="flex items-center justify-between">
-                                <div>
-                                  <p className="font-semibold text-gray-800">
-                                    {drone.name || `Drone ${drone._id.slice(-4)}`}
-                                  </p>
-                                  <div className="flex items-center gap-3 mt-1 text-xs text-gray-600">
-                                    <span className="flex items-center gap-1">
-                                      <Battery className="w-3 h-3" />
-                                      {drone.batteryLevel || 0}%
-                                    </span>
-                                    <span className="flex items-center gap-1">
-                                      <Package className="w-3 h-3" />
-                                      {drone.currentLoad || 0}/{drone.capacity || 0}kg
-                                    </span>
-                                  </div>
-                                </div>
-                                <CheckCircle className="w-5 h-5 text-green-600" />
-                              </div>
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
+          <div className="bg-white rounded-lg shadow-md overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Đơn hàng ID</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Địa chỉ</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Trạng thái</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Hành động</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {filteredPendingOrders.length === 0 ? (
+                  <tr>
+                    <td colSpan="4" className="px-6 py-4 text-center text-gray-500">
+                      Không có đơn hàng chờ gán
+                    </td>
+                  </tr>
+                ) : (
+                  filteredPendingOrders.map((order) => (
+                    <tr key={order._id} className="hover:bg-gray-50 transition-all">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">#{order._id.slice(-8)}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{order.shippingAddress?.text || "Không rõ"}</td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-orange-100 text-orange-800">
+                          Chờ gán
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <button
+                          onClick={() => {
+                            setSelectedOrderForAssign(order);
+                            setShowAssignModal(true);
+                          }}
+                          className="text-blue-600 hover:text-blue-900 font-medium"
+                        >
+                          Gán Drone
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
           </div>
         </div>
 
         {/* All Drones */}
-        <div className="bg-white rounded-xl shadow-lg overflow-hidden">
-          <div className="bg-gradient-to-r from-purple-500 to-pink-500 p-4">
-            <h3 className="text-xl font-bold text-white flex items-center gap-2">
-              <Plane className="w-6 h-6" />
-              Danh sách Drone ({drones.length})
-            </h3>
+        <div>
+          <div className="bg-white rounded-lg shadow-md p-4 mb-4 flex items-center justify-between">
+            <div className="flex-1 relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Tìm kiếm drone..."
+                value={droneSearch}
+                onChange={(e) => setDroneSearch(e.target.value)}
+                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+              />
+            </div>
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              className="ml-4 px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium min-w-[150px]"
+            >
+              <option value="name">Sắp xếp theo tên</option>
+              <option value="batteryLevel">Sắp xếp theo pin</option>
+              <option value="capacity">Sắp xếp theo tải trọng</option>
+              <option value="status">Sắp xếp theo trạng thái</option>
+            </select>
+            <button
+              onClick={() => setSortOrder(sortOrder === "asc" ? "desc" : "asc")}
+              className="ml-2 px-4 py-3 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200 transition-all"
+            >
+              {sortOrder === "asc" ? <SortAsc className="w-5 h-5" /> : <SortDesc className="w-5 h-5" />}
+            </button>
           </div>
-
-          <div className="p-4">
-            {drones.length === 0 ? (
-              <div className="text-center py-12">
-                <Plane className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                <p className="text-gray-500 mb-4">Chưa có drone nào</p>
-                <button
-                  onClick={() => setShowAdd(true)}
-                  className="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-6 py-3 rounded-xl font-semibold hover:shadow-lg transition-all duration-200 inline-flex items-center gap-2"
-                >
-                  <Plus className="w-5 h-5" />
-                  Thêm drone đầu tiên
-                </button>
-              </div>
-            ) : (
-              <div className="space-y-3 max-h-[600px] overflow-y-auto">
-                {drones.map((drone) => {
-                  const badge = getStatusBadge(drone.status);
-                  const BadgeIcon = badge.icon;
-                  const batteryColor = getBatteryColor(drone.batteryLevel || 0);
-
-                  return (
-                    <div
-                      key={drone._id}
-                      className="border-2 border-gray-200 rounded-xl p-4 hover:shadow-md transition-all"
-                    >
-                      <div className="flex items-start justify-between mb-3">
-                        <div className="flex items-center gap-3">
-                          <div className="w-12 h-12 bg-gradient-to-br from-purple-100 to-pink-100 rounded-lg flex items-center justify-center">
-                            <Plane className="w-6 h-6 text-purple-600" />
-                          </div>
-                          <div>
-                            <p className="font-bold text-gray-800">
-                              {drone.name || `Drone ${drone._id.slice(-4)}`}
-                            </p>
-                            <p className="text-xs text-gray-500">
-                              Mã: {drone.code || drone._id.slice(-8)}
-                            </p>
-                          </div>
-                        </div>
-
-                        <span
-                          className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold border-2 ${badge.color}`}
-                        >
-                          <BadgeIcon className="w-3 h-3" />
-                          {badge.text}
-                        </span>
-                      </div>
-
-                      {/* Drone Stats */}
-                      <div className="grid grid-cols-2 gap-3">
-                        <div className="bg-gray-50 rounded-lg p-3">
-                          <div className="flex items-center gap-2 mb-1">
-                            <Battery className={`w-4 h-4 ${batteryColor}`} />
-                            <span className="text-xs text-gray-600">Pin</span>
-                          </div>
-                          <p className={`text-lg font-bold ${batteryColor}`}>
-                            {drone.batteryLevel || 0}%
-                          </p>
-                        </div>
-
-                        <div className="bg-gray-50 rounded-lg p-3">
-                          <div className="flex items-center gap-2 mb-1">
-                            <Package className="w-4 h-4 text-blue-600" />
-                            <span className="text-xs text-gray-600">Tải trọng</span>
-                          </div>
-                          <p className="text-lg font-bold text-blue-600">
-                            {drone.currentLoad || 0}/{drone.capacity || 0}kg
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
+          <div className="bg-white rounded-lg shadow-md overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Mã Drone</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tên</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Trạng thái</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pin (%)</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tải trọng (kg)</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {filteredAndSortedDrones.length === 0 ? (
+                  <tr>
+                    <td colSpan="5" className="px-6 py-4 text-center text-gray-500">
+                      Không tìm thấy drone
+                    </td>
+                  </tr>
+                ) : (
+                  filteredAndSortedDrones.map((drone) => {
+                    const badge = getStatusBadge(drone.status);
+                    const batteryColor = getBatteryColor(drone.batteryLevel || 0);
+                    return (
+                      <tr key={drone._id} className="hover:bg-gray-50 transition-all">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{drone.code || drone._id.slice(-8)}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{drone.name || `Drone ${drone._id.slice(-4)}`}</td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${badge.color}`}>
+                            {badge.text}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm">
+                          <span className={batteryColor}>{drone.batteryLevel || 0}%</span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {drone.currentLoad || 0}/{drone.capacity || 0}
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
           </div>
         </div>
       </div>
+
+      {/* Add Drone Modal */}
+      {showAdd && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg w-full max-w-lg shadow-xl">
+            <div className="p-6 border-b border-gray-200 flex items-center justify-between">
+              <h2 className="text-xl font-semibold text-gray-800">Thêm Drone mới</h2>
+              <button onClick={() => setShowAdd(false)}>
+                <X className="w-6 h-6 text-gray-500" />
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Mã drone *</label>
+                <input
+                  type="text"
+                  placeholder="VD: DRN001"
+                  value={newDrone.code}
+                  onChange={(e) => setNewDrone({ ...newDrone, code: e.target.value })}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Tên hiển thị</label>
+                <input
+                  type="text"
+                  placeholder="VD: Drone Xanh"
+                  value={newDrone.name}
+                  onChange={(e) => setNewDrone({ ...newDrone, name: e.target.value })}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Pin (%)</label>
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  placeholder="100"
+                  value={newDrone.batteryLevel}
+                  onChange={(e) => setNewDrone({ ...newDrone, batteryLevel: Number(e.target.value) })}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Tải tối đa (kg)</label>
+                <input
+                  type="number"
+                  min="1"
+                  placeholder="5"
+                  value={newDrone.capacity}
+                  onChange={(e) => setNewDrone({ ...newDrone, capacity: Number(e.target.value) })}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+            </div>
+            <div className="p-6 border-t border-gray-200 flex justify-end gap-3">
+              <button
+                onClick={() => setShowAdd(false)}
+                className="px-6 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 transition-colors"
+              >
+                Hủy
+              </button>
+              <button
+                onClick={createDrone}
+                className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-all"
+              >
+                Tạo Drone
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Assign Drone Modal */}
+      {showAssignModal && selectedOrderForAssign && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg w-full max-w-lg shadow-xl overflow-hidden">
+            <div className="p-6 border-b border-gray-200 flex items-center justify-between">
+              <h2 className="text-xl font-semibold text-gray-800">Gán Drone cho Đơn #{selectedOrderForAssign._id.slice(-8)}</h2>
+              <button onClick={() => { setShowAssignModal(false); setSelectedOrderForAssign(null); }}>
+                <X className="w-6 h-6 text-gray-500" />
+              </button>
+            </div>
+            <div className="p-6 max-h-96 overflow-y-auto space-y-4">
+              {idleDrones.length === 0 ? (
+                <p className="text-center text-gray-500">Không có drone sẵn sàng</p>
+              ) : (
+                idleDrones.map((drone) => (
+                  <div key={drone._id} className="bg-gray-50 rounded-lg p-4 flex items-center justify-between">
+                    <div>
+                      <p className="font-semibold text-gray-800">{drone.name || `Drone ${drone._id.slice(-4)}`}</p>
+                      <div className="flex items-center gap-4 mt-2 text-sm text-gray-600">
+                        <span className="flex items-center gap-1">
+                          <Battery className="w-4 h-4" />
+                          {drone.batteryLevel || 0}%
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <Package className="w-4 h-4" />
+                          {drone.currentLoad || 0}/{drone.capacity || 0}kg
+                        </span>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => assignDrone(drone._id, selectedOrderForAssign._id)}
+                      className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-all"
+                    >
+                      Gán
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

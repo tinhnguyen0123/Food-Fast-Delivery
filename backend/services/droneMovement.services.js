@@ -60,8 +60,7 @@ class DroneMovementService {
             await OrderRepository.updateOrder(delivery.orderId, { arrivedNotified: true });
             console.log(`✅ Drone ${drone.code} đã đến đích`);
 
-            // ✅ Tự động quay về nhà hàng
-            await this.startReturnToBase(delivery);
+          
             return;
           }
 
@@ -101,6 +100,7 @@ class DroneMovementService {
   }
 
   // ✅ Quay về nhà hàng sau khi giao (dropoff -> pickup)
+    // ✅ Quay về nhà hàng sau khi giao (dropoff -> pickup)
   async startReturnToBase(delivery) {
     try {
       const drone = delivery.droneId;
@@ -122,11 +122,15 @@ class DroneMovementService {
 
       const interval = setInterval(async () => {
         try {
+          // --------------------------
+          //   ⬇️⬇️ Đây là đoạn bạn yêu cầu sửa
+          // --------------------------
           if (idx >= total) {
             await this.stopMovement(drone._id);
 
-            // Cập nhật vị trí cuối cùng về nhà hàng
+            // Cập nhật vị trí cuối cùng = vị trí nhà hàng (pickup)
             let locationId = drone.currentLocationId?._id || drone.currentLocationId;
+
             if (locationId) {
               await LocationRepository.updateLocation(locationId, {
                 coords: { lat: pickup.lat, lng: pickup.lng },
@@ -138,17 +142,25 @@ class DroneMovementService {
                 address: `Drone ${drone.code} at restaurant`,
               });
               locationId = newLoc._id;
-              await DroneRepository.updateDrone(drone._id, { currentLocationId: locationId });
+              await DroneRepository.updateDrone(drone._id, {
+                currentLocationId: locationId,
+              });
             }
 
-            // ✅ Cho phép drone nhận đơn tiếp theo
+            // 👉 Set trạng thái idle để drone sẵn sàng nhận đơn mới
             await DroneRepository.updateDrone(drone._id, { status: "idle" });
+
             console.log(`🏠 Drone ${drone.code} đã về nhà hàng và sẵn sàng`);
             return;
           }
+          // --------------------------
+          //   ⬆️⬆️ Kết thúc đoạn sửa
+          // --------------------------
 
+          // Cập nhật vị trí đang di chuyển
           const pos = routeBack[idx];
           let locationId = drone.currentLocationId?._id || drone.currentLocationId;
+
           if (locationId) {
             await LocationRepository.updateLocation(locationId, {
               coords: { lat: pos.lat, lng: pos.lng },
@@ -160,13 +172,15 @@ class DroneMovementService {
               address: `Drone ${drone.code} returning`,
             });
             locationId = newLoc._id;
-            await DroneRepository.updateDrone(drone._id, { currentLocationId: locationId });
+            await DroneRepository.updateDrone(drone._id, {
+              currentLocationId: locationId,
+            });
           }
 
           console.log(
-            `↩️ Drone ${drone.code} về nhà hàng tại [${pos.lat.toFixed(5)}, ${pos.lng.toFixed(
+            `↩️ Drone ${drone.code} về nhà hàng tại [${pos.lat.toFixed(
               5
-            )}] (${idx + 1}/${total})`
+            )}, ${pos.lng.toFixed(5)}] (${idx + 1}/${total})`
           );
 
           idx++;
@@ -180,6 +194,7 @@ class DroneMovementService {
       console.error("startReturnToBase error:", e);
     }
   }
+
 
   // ✅ Dừng di chuyển drone
   stopMovement(droneId) {

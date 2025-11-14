@@ -88,6 +88,14 @@ export default function DronesPage() {
       icon: Wrench,
       gradient: "from-yellow-500 to-orange-500",
     },
+
+    returning: {
+      color: "bg-purple-100 text-purple-800",
+      border: "border-purple-300",
+      icon: Plane,
+      gradient: "from-purple-500 to-purple-600",
+    },
+    
     offline: {
       color: "bg-red-100 text-red-800",
       border: "border-red-300",

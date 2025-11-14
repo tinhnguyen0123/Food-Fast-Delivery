@@ -263,24 +263,24 @@ export default function OrdersPage() {
   // GIAO DIỆN MỚI
   // ===============================================
   return (
-    <div className="space-y-6">
-      {/* Header (giữ nguyên) */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+    <div className="space-y-4">
+      {/* Header (giảm kích thước) */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-gray-800">Quản lý đơn hàng</h1>
-          <p className="text-gray-600 mt-1">Theo dõi và xử lý đơn hàng của nhà hàng</p>
+          <h1 className="text-xl font-bold text-gray-800">Quản lý đơn hàng</h1>
+          <p className="text-sm text-gray-600 mt-1">Theo dõi và xử lý đơn hàng của nhà hàng</p>
         </div>
         <button
           onClick={loadOrders}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+          className="px-3 py-1.5 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors font-medium text-sm"
         >
           🔄 Tải lại
         </button>
       </div>
 
-      {/* Status Tabs (giữ nguyên) */}
-      <div className="bg-white rounded-xl shadow-md p-4">
-        <div className="flex gap-2 overflow-x-auto pb-2">
+      {/* Status Tabs (giảm kích thước) */}
+      <div className="bg-white rounded-md shadow-md p-2">
+        <div className="flex gap-1 overflow-x-auto pb-1">
           {TABS.map((t) => {
             const Icon = t.icon;
             const isActive = tab === t.key;
@@ -290,15 +290,15 @@ export default function OrdersPage() {
               <button
                 key={t.key}
                 onClick={() => setTab(t.key)}
-                className={`flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium whitespace-nowrap transition-all ${
+                className={`flex items-center gap-1 px-3 py-1.5 rounded-md font-medium whitespace-nowrap transition-all text-sm ${
                   isActive
-                    ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg"
+                    ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-md"
                     : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                 }`}
               >
-                <Icon className="w-4 h-4" />
+                <Icon className="w-3 h-3" />
                 <span>{t.label}</span>
-                <span className={`px-2 py-0.5 rounded-full text-xs ${isActive ? "bg-white/20" : "bg-gray-200"}`}>
+                <span className={`px-1.5 py-0.5 rounded-full text-xs ${isActive ? "bg-white/20" : "bg-gray-200"}`}>
                   {count}
                 </span>
               </button>
@@ -308,14 +308,14 @@ export default function OrdersPage() {
       </div>
 
       {/* === BỐ CỤC MASTER-DETAIL MỚI === */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* --- CỘT BÊN TRÁI: DANH SÁCH ĐƠN HÀNG --- */}
         <div className="lg:col-span-1">
           {ordersToShow.length === 0 ? (
-            <div className="bg-white rounded-xl shadow-md p-12 text-center">
-              <Package className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-              <h3 className="text-xl font-semibold text-gray-800 mb-2">Không có đơn hàng</h3>
-              <p className="text-gray-600">
+            <div className="bg-white rounded-md shadow-md p-8 text-center">
+              <Package className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+              <h3 className="text-lg font-semibold text-gray-800 mb-1">Không có đơn hàng</h3>
+              <p className="text-sm text-gray-600">
                 {tab === "all"
                   ? "Chưa có đơn hàng nào"
                   : `Không có đơn hàng ở trạng thái "${TABS.find((t) => t.key === tab)?.label}"`}
@@ -323,7 +323,7 @@ export default function OrdersPage() {
             </div>
           ) : (
             // Thêm max-h và overflow-y để cuộn
-            <div className="space-y-3 lg:max-h-[calc(100vh-280px)] lg:overflow-y-auto pr-2">
+            <div className="space-y-2 lg:max-h-[calc(100vh-200px)] lg:overflow-y-auto pr-1">
               {ordersToShow.map((order) => (
                 <OrderSummaryCard
                   key={order._id}
@@ -349,11 +349,11 @@ export default function OrdersPage() {
               onCancel={cancelOrder}
             />
           ) : (
-            <div className="flex items-center justify-center h-full bg-white rounded-xl shadow-md p-12 text-center">
+            <div className="flex items-center justify-center h-full bg-white rounded-md shadow-md p-8 text-center">
               <div>
-                <Info className="w-16 h-16 text-blue-400 mx-auto mb-4" />
-                <h3 className="text-xl font-semibold text-gray-800 mb-2">Chưa chọn đơn hàng</h3>
-                <p className="text-gray-600">Vui lòng chọn một đơn hàng từ danh sách bên trái để xem chi tiết.</p>
+                <Info className="w-12 h-12 text-blue-400 mx-auto mb-3" />
+                <h3 className="text-lg font-semibold text-gray-800 mb-1">Chưa chọn đơn hàng</h3>
+                <p className="text-sm text-gray-600">Vui lòng chọn một đơn hàng từ danh sách bên trái để xem chi tiết.</p>
               </div>
             </div>
           )}
@@ -381,28 +381,28 @@ function OrderSummaryCard({ order, isSelected, onSelect, getStatusBadge }) {
   return (
     <button
       onClick={onSelect}
-      className={`w-full p-4 bg-white rounded-xl shadow-md hover:shadow-lg transition-all text-left border-l-4 ${
+      className={`w-full p-3 bg-white rounded-md shadow-md hover:shadow-lg transition-all text-left border-l-4 ${
         statusColor[order.status] || "border-gray-500"
       } ${isSelected ? "ring-2 ring-blue-500 shadow-lg" : ""}`}
     >
-      <div className="flex justify-between items-center mb-2">
-        <h3 className="text-lg font-bold text-gray-800">Đơn #{order._id.slice(-8)}</h3>
-        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${badge.color}`}>
+      <div className="flex justify-between items-center mb-1">
+        <h3 className="text-base font-bold text-gray-800">Đơn #{order._id.slice(-8)}</h3>
+        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold ${badge.color}`}>
           <BadgeIcon className="w-3 h-3" />
           {badge.text}
         </span>
       </div>
-      <p className="text-sm text-gray-600 mb-3">
+      <p className="text-xs text-gray-600 mb-1">
         {order.userId?.name || "Khách hàng"}
       </p>
       <div className="flex justify-between items-center">
-        <span className="text-sm text-gray-500">
+        <span className="text-xs text-gray-500">
           {new Date(order.createdAt).toLocaleTimeString("vi-VN", {
             hour: "2-digit",
             minute: "2-digit",
           })}
         </span>
-        <span className="text-lg font-bold text-green-600">
+        <span className="text-base font-bold text-green-600">
           {Intl.NumberFormat("vi-VN").format(order.totalPrice || 0)}đ
         </span>
       </div>
@@ -419,51 +419,51 @@ function OrderDetailView({ order, getStatusBadge, onConfirm, onReady, onStartDel
   const BadgeIcon = badge.icon;
 
   return (
-    <div className="bg-white rounded-xl shadow-md overflow-hidden">
+    <div className="bg-white rounded-md shadow-md overflow-hidden">
       {/* Order Header */}
-      <div className="bg-gradient-to-r from-blue-50 to-purple-50 p-4 border-b">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-500 rounded-lg flex items-center justify-center">
-              <Package className="w-6 h-6 text-white" />
+      <div className="bg-gradient-to-r from-blue-50 to-purple-50 p-3 border-b">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+          <div className="flex items-center gap-2">
+            <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-500 rounded-md flex items-center justify-center">
+              <Package className="w-5 h-5 text-white" />
             </div>
             <div>
-              <h3 className="text-lg font-bold text-gray-800">
+              <h3 className="text-base font-bold text-gray-800">
                 Đơn #{order._id.slice(-8)}
               </h3>
-              <p className="text-sm text-gray-600 flex items-center gap-1">
+              <p className="text-xs text-gray-600 flex items-center gap-1">
                 <Calendar className="w-3 h-3" />
                 {new Date(order.createdAt).toLocaleString("vi-VN")}
               </p>
             </div>
           </div>
-          <span className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-semibold border-2 ${badge.color}`}>
-            <BadgeIcon className="w-4 h-4" />
+          <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold border ${badge.color}`}>
+            <BadgeIcon className="w-3 h-3" />
             {badge.text}
           </span>
         </div>
       </div>
 
       {/* Order Body */}
-      <div className="p-4">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+      <div className="p-3">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 mb-3">
           {/* Customer Info */}
-          <div className="space-y-3">
-            <h4 className="font-semibold text-gray-800 flex items-center gap-2">
+          <div className="space-y-2">
+            <h4 className="font-semibold text-sm text-gray-800 flex items-center gap-1">
               <User className="w-4 h-4 text-blue-600" />
               Thông tin khách hàng
             </h4>
-            <div className="bg-gray-50 rounded-lg p-3 space-y-2">
-              <p className="text-sm">
+            <div className="bg-gray-50 rounded-md p-2 space-y-1 text-xs">
+              <p>
                 <span className="font-medium text-gray-700">Tên:</span>{" "}
                 <span className="text-gray-600">{order.userId?.name || "Khách hàng"}</span>
               </p>
-              <p className="text-sm">
+              <p>
                 <span className="font-medium text-gray-700">Email:</span>{" "}
                 <span className="text-gray-600">{order.userId?.email || "N/A"}</span>
               </p>
               {order.shippingAddress?.text && (
-                <p className="text-sm flex items-start gap-2">
+                <p className="flex items-start gap-1">
                   <MapPin className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
                   <span className="text-gray-600">{order.shippingAddress.text}</span>
                 </p>
@@ -472,17 +472,17 @@ function OrderDetailView({ order, getStatusBadge, onConfirm, onReady, onStartDel
           </div>
 
           {/* Order Items */}
-          <div className="space-y-3">
-            <h4 className="font-semibold text-gray-800 flex items-center gap-2">
+          <div className="space-y-2">
+            <h4 className="font-semibold text-sm text-gray-800 flex items-center gap-1">
               <ShoppingBag className="w-4 h-4 text-orange-600" />
               Chi tiết món ({order.items?.length || 0})
             </h4>
-            <div className="bg-gray-50 rounded-lg p-3 max-h-40 overflow-y-auto">
-              <ul className="space-y-2">
+            <div className="bg-gray-50 rounded-md p-2 max-h-32 overflow-y-auto text-xs">
+              <ul className="space-y-1">
                 {(order.items || []).map((item, idx) => (
-                  <li key={idx} className="flex justify-between items-center text-sm">
-                    <div className="flex items-center gap-2">
-                      <span className="w-6 h-6 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-xs font-semibold">
+                  <li key={idx} className="flex justify-between items-center">
+                    <div className="flex items-center gap-1">
+                      <span className="w-5 h-5 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-xs font-semibold">
                         {item.quantity}
                       </span>
                       <span className="font-medium text-gray-700">
@@ -503,13 +503,13 @@ function OrderDetailView({ order, getStatusBadge, onConfirm, onReady, onStartDel
         </div>
 
         {/* Total Price */}
-        <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg p-3 mb-4">
-          <div className="flex justify-between items-center">
-            <span className="font-semibold text-gray-800 flex items-center gap-2">
-              <DollarSign className="w-5 h-5 text-green-600" />
+        <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-md p-2 mb-3">
+          <div className="flex justify-between items-center text-sm">
+            <span className="font-semibold text-gray-800 flex items-center gap-1">
+              <DollarSign className="w-4 h-4 text-green-600" />
               Tổng tiền
             </span>
-            <span className="text-2xl font-bold text-green-600">
+            <span className="text-xl font-bold text-green-600">
               {Intl.NumberFormat("vi-VN").format(order.totalPrice || 0)}đ
             </span>
           </div>
@@ -518,35 +518,35 @@ function OrderDetailView({ order, getStatusBadge, onConfirm, onReady, onStartDel
         {/* Action Buttons */}
         <div className="flex flex-wrap gap-2">
           {order.status === "pending" && (
-            <button onClick={() => onConfirm(order._id)} className="flex-1 sm:flex-none bg-gradient-to-r from-green-600 to-emerald-600 text-white px-6 py-2.5 rounded-lg font-semibold hover:shadow-lg transition-all flex items-center justify-center gap-2">
-              <CheckCircle className="w-5 h-5" /> Xác nhận đơn
+            <button onClick={() => onConfirm(order._id)} className="flex-1 sm:flex-none bg-gradient-to-r from-green-600 to-emerald-600 text-white px-4 py-2 rounded-md font-semibold hover:shadow-lg transition-all flex items-center justify-center gap-1 text-sm">
+              <CheckCircle className="w-4 h-4" /> Xác nhận đơn
             </button>
           )}
           {order.status === "preparing" && (
-            <button onClick={() => onReady(order._id)} className="flex-1 sm:flex-none bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-2.5 rounded-lg font-semibold hover:shadow-lg transition-all flex items-center justify-center gap-2">
-              <Truck className="w-5 h-5" /> Sẵn sàng
+            <button onClick={() => onReady(order._id)} className="flex-1 sm:flex-none bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-2 rounded-md font-semibold hover:shadow-lg transition-all flex items-center justify-center gap-1 text-sm">
+              <Truck className="w-4 h-4" /> Sẵn sàng
             </button>
           )}
           {order.status === "ready" &&
             (order.deliveryId ? (
-              <button onClick={() => onStartDelivery(order)} className="flex-1 sm:flex-none bg-purple-600 text-white px-6 py-2.5 rounded-lg font-semibold hover:bg-purple-700 transition-all flex items-center justify-center gap-2">
-                <Truck className="w-5 h-5" /> Bắt đầu giao
+              <button onClick={() => onStartDelivery(order)} className="flex-1 sm:flex-none bg-purple-600 text-white px-4 py-2 rounded-md font-semibold hover:bg-purple-700 transition-all flex items-center justify-center gap-1 text-sm">
+                <Truck className="w-4 h-4" /> Bắt đầu giao
               </button>
             ) : (
-              <span className="text-sm text-gray-600 bg-gray-100 px-3 py-2 rounded-lg">
+              <span className="text-xs text-gray-600 bg-gray-100 px-3 py-2 rounded-md">
                 Đơn đã sẵn sàng. Vui lòng qua trang Drone để gán drone.
               </span>
             ))}
           
           {/* Nút hủy: Cho phép hủy khi đang chờ hoặc đang chuẩn bị */}
           {(order.status === "pending" || order.status === "preparing") && (
-             <button onClick={() => onCancel(order._id)} className="flex-1 sm:flex-none bg-red-100 text-red-600 px-6 py-2.5 rounded-lg font-semibold hover:bg-red-200 transition-all flex items-center justify-center gap-2">
-              <XCircle className="w-5 h-5" /> Hủy đơn
+             <button onClick={() => onCancel(order._id)} className="flex-1 sm:flex-none bg-red-100 text-red-600 px-4 py-2 rounded-md font-semibold hover:bg-red-200 transition-all flex items-center justify-center gap-1 text-sm">
+              <XCircle className="w-4 h-4" /> Hủy đơn
             </button>
           )}
 
           {(order.status === "completed" || order.status === "cancelled") && (
-            <div className={`w-full text-center py-2 rounded-lg font-medium ${order.status === "completed" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
+            <div className={`w-full text-center py-2 rounded-md font-medium text-sm ${order.status === "completed" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
               {order.status === "completed" ? "✅ Đơn hàng đã hoàn thành" : "❌ Đơn hàng đã bị hủy"}
             </div>
           )}
