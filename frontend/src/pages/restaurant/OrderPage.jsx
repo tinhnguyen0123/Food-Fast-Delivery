@@ -131,6 +131,7 @@ export default function OrdersPage() {
 
   // (Toàn bộ logic: confirmOrder, markReady, startDelivery, cancelOrder, getStatusBadge... giữ nguyên)
   // ...
+  // ...existing code...
   const confirmOrder = async (orderId) => {
     try {
       const res = await fetch(`${API_BASE}/api/order/${orderId}`, {
@@ -141,12 +142,21 @@ export default function OrdersPage() {
         },
         body: JSON.stringify({ status: "preparing" }),
       });
+
       const data = await res.json();
-      if (!res.ok) throw new Error(data.message || "Xác nhận đơn thất bại");
-      const updatedOrder = { ...data, status: "preparing" };
+      if (!res.ok) throw new Error(data.message || "Lỗi xác nhận đơn");
+
+      // ✅ Giữ lại thông tin userId cũ nếu backend không trả về
+      const updatedOrder = data.order && data.order._id 
+        ? {
+            ...data.order,
+            userId: data.order.userId || selectedOrder?.userId // Giữ userId cũ
+          }
+        : { ...selectedOrder, status: "preparing" };
+
       setOrders((prev) => prev.map((o) => (o._id === orderId ? updatedOrder : o)));
-      // Cập nhật cả đơn hàng đang chọn
       if (selectedOrder?._id === orderId) setSelectedOrder(updatedOrder);
+      
       toast.success("Đã xác nhận đơn hàng");
     } catch (e) {
       console.error(e);
@@ -164,17 +174,28 @@ export default function OrdersPage() {
         },
         body: JSON.stringify({ status: "ready" }),
       });
+
       const data = await res.json();
-      if (!res.ok) throw new Error(data.message || "Cập nhật trạng thái thất bại");
-      const updatedOrder = { ...data, status: "ready" };
+      if (!res.ok) throw new Error(data.message || "Lỗi đánh dấu sẵn sàng");
+
+      // ✅ Giữ lại thông tin userId cũ
+      const updatedOrder = data.order && data.order._id
+        ? {
+            ...data.order,
+            userId: data.order.userId || selectedOrder?.userId
+          }
+        : { ...selectedOrder, status: "ready" };
+
       setOrders((prev) => prev.map((o) => (o._id === orderId ? updatedOrder : o)));
       if (selectedOrder?._id === orderId) setSelectedOrder(updatedOrder);
+      
       toast.success("Đơn đã sẵn sàng");
     } catch (e) {
       console.error(e);
       toast.error(e.message || "Lỗi cập nhật trạng thái");
     }
   };
+// ...existing code...
 
   const startDelivery = async (order) => {
     try {

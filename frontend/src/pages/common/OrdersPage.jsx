@@ -124,6 +124,7 @@ export default function OrdersPage() {
     const colors = {
       pending: "bg-yellow-100 text-yellow-800 border-yellow-200",
       preparing: "bg-blue-100 text-blue-800 border-blue-200",
+      ready: "bg-purple-100 text-purple-800 border-purple-200",
       delivering: "bg-purple-100 text-purple-800 border-purple-200",
       completed: "bg-green-100 text-green-800 border-green-200",
       cancelled: "bg-red-100 text-red-800 border-red-200",
@@ -135,6 +136,7 @@ export default function OrdersPage() {
     const texts = {
       pending: "Chờ xử lý",
       preparing: "Đang chuẩn bị",
+      ready: "Đang chuẩn bị",
       delivering: "Đang giao",
       completed: "Đã giao",
       cancelled: "Đã hủy",

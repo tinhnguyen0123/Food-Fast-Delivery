@@ -137,22 +137,29 @@ export default function OrderDetailPage() {
     const pollDelivery = async () => {
       try {
         const token = localStorage.getItem("token");
-        const res = await fetch(`${API_BASE}/api/delivery/order/${id}`, {
+        // 1. Gọi API lấy thông tin giao hàng (vị trí drone)
+        const deliveryRes = await fetch(`${API_BASE}/api/delivery/order/${id}`, {
           headers: token ? { Authorization: `Bearer ${token}` } : {},
         });
-        if (!res.ok) return;
-        const data = await res.json();
-        if (!mounted) return;
-        setDelivery(data);
-        setDronePos(data?.droneId?.currentLocationId?.coords || null);
-
-        if (data?.status === "arrived") {
-          const r2 = await fetch(`${API_BASE}/api/order/${id}`, {
-            headers: token ? { Authorization: `Bearer ${token}` } : {},
-          });
-          if (r2.ok) setOrder(await r2.json());
+        // 2. Gọi API lấy thông tin đơn hàng (để cập nhật status)
+        const orderRes = await fetch(`${API_BASE}/api/order/${id}`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
+        if (!mounted) return; // Kiểm tra component còn mounted không
+        // 3. Cập nhật state giao hàng
+        if (deliveryRes.ok) {
+          const deliveryData = await deliveryRes.json();
+          setDelivery(deliveryData);
+          setDronePos(deliveryData?.droneId?.currentLocationId?.coords || null);
         }
-      } catch {}
+        // 4. Cập nhật state đơn hàng (FIX QUAN TRỌNG NHẤT)
+        if (orderRes.ok) {
+          const orderData = await orderRes.json();
+          setOrder(orderData); // <--- Dòng này sẽ cập nhật lại 'cây trạng thái'
+        }
+      } catch (e) {
+        console.error("Lỗi polling:", e); // Nên thêm log để biết lỗi
+      }
     };
 
     pollDelivery();

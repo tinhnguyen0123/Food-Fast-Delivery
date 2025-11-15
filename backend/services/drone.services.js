@@ -108,6 +108,7 @@ class DroneService {
     return { delivery, orderId: order._id, drone };
   }
 
+  // ...existing code...
   // ✅ Bắt đầu giao: chuyển trạng thái và khởi động drone
   async startDelivery(deliveryId) {
     if (!deliveryId) throw new Error("Thiếu deliveryId");
@@ -120,9 +121,41 @@ class DroneService {
     if (!order) throw new Error("Không tìm thấy đơn hàng");
     if (order.status !== "ready") throw new Error("Chỉ bắt đầu giao khi đơn ở trạng thái 'ready'");
 
-    // Cập nhật trạng thái: drone -> delivering, delivery -> on_the_way, order -> delivering
-    await DroneRepository.updateDrone(delivery.droneId, { status: "delivering" });
-    await DeliveryRepository.updateDelivery(delivery._id, { status: "on_the_way", startedAt: new Date() });
+    const drone = delivery.droneId;
+    const pickupLocation = delivery.pickupLocationId;
+
+    // ✅ Đặt drone về vị trí nhà hàng trước khi bay
+    if (pickupLocation?.coords) {
+      let locationId = drone.currentLocationId?._id || drone.currentLocationId;
+      
+      if (locationId) {
+        await LocationRepository.updateLocation(locationId, {
+          coords: { 
+            lat: pickupLocation.coords.lat, 
+            lng: pickupLocation.coords.lng 
+          },
+        });
+      } else {
+        const newLoc = await LocationRepository.createLocation({
+          type: "drone",
+          coords: { 
+            lat: pickupLocation.coords.lat, 
+            lng: pickupLocation.coords.lng 
+          },
+          address: `Drone ${drone.code} at restaurant`,
+        });
+        await DroneRepository.updateDrone(drone._id, { 
+          currentLocationId: newLoc._id 
+        });
+      }
+    }
+
+    // Cập nhật trạng thái
+    await DroneRepository.updateDrone(delivery.droneId._id, { status: "delivering" });
+    await DeliveryRepository.updateDelivery(delivery._id, { 
+      status: "on_the_way", 
+      startedAt: new Date() 
+    });
     await OrderRepository.updateOrder(order._id, { status: "delivering" });
 
     // Khởi động di chuyển
@@ -134,6 +167,7 @@ class DroneService {
 
     return { message: "Delivery started" };
   }
+// ...existing code...
 
   // ✅ Tự động gán tất cả drone idle cho các đơn "ready"
   async autoAssignForRestaurant(restaurantId) {
