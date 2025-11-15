@@ -21,6 +21,8 @@ droneRouter.post("/start-delivery", DroneController.startDelivery);
 // ✅ Các route theo :id sau cùng
 droneRouter.get("/:id", DroneController.getById);
 droneRouter.put("/:id", DroneController.update);
+droneRouter.put("/:id/status", verifyToken, DroneController.updateStatus); // ◀️ Mới
+droneRouter.post("/:id/charge", verifyToken, DroneController.chargeDrone); // ◀️ Mới
 droneRouter.delete("/:id", DroneController.delete);
 
 export default droneRouter;

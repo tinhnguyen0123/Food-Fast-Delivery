@@ -44,7 +44,7 @@ export default function PaymentPage() {
   const navigate = useNavigate();
   const [cart, setCart] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [position, setPosition] = useState({ lat: 21.0278, lng: 105.8342 });
+  const [position, setPosition] = useState({ lat: 10.760159513948246, lng: 106.68223683790899 });
   const [address, setAddress] = useState("");
   const [query, setQuery] = useState("");
   const [suggestions, setSuggestions] = useState([]);

@@ -182,9 +182,7 @@ async startMovement(deliveryId) {
           }
 
           console.log(
-            `↩️ Drone ${drone.code} về nhà hàng tại [${pos.lat.toFixed(
-              5
-            )}, ${pos.lng.toFixed(5)}] (${idx + 1}/${total})`
+            `↩️ Drone ${drone.code} về nhà hàng tại [${pos.lat.toFixed(5)}, ${pos.lng.toFixed(5)}] (${idx + 1}/${total})`
           );
 
           idx++;
