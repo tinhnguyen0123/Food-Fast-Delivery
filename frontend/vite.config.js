@@ -3,12 +3,12 @@ import react from "@vitejs/plugin-react";
 import { fileURLToPath, URL } from "node:url";
 
 // ✅ Load environment theo mode (vite --mode ...)
-export default defineConfig(({ mode }) => {
+export default ({ mode }) => {
   // Load biến môi trường cho mode hiện tại
   const env = loadEnv(mode, process.cwd(), "");
 
   // ✅ Xác định target (customer / admin / restaurant)
-  const target = (env.VITE_TARGET || process.env.VITE_TARGET || "customer").toUpperCase();
+  const target = (env.VITE_TARGET || "customer").toUpperCase();
 
   // ✅ Lấy port (ưu tiên theo target, sau đó tới VITE_PORT, cuối cùng mặc định 5173)
   const port =
@@ -19,7 +19,7 @@ export default defineConfig(({ mode }) => {
   // ✅ Base path cho deploy (VD: /admin/ khi host nhiều app)
   const base = env.VITE_BASE || "/";
 
-  return {
+  return defineConfig({
     plugins: [react()],
     base,
     server: {
@@ -31,10 +31,9 @@ export default defineConfig(({ mode }) => {
         "@": fileURLToPath(new URL("./src", import.meta.url)),
       },
     },
-    // ✅ Chỉ expose biến cần thiết ra client
     define: {
-      __APP_TARGET__: JSON.stringify(env.VITE_TARGET || process.env.VITE_TARGET),
-      __APP_ENV__: JSON.stringify(env.NODE_ENV || process.env.NODE_ENV),
+      __APP_TARGET__: JSON.stringify(env.VITE_TARGET),
+      __APP_ENV__: JSON.stringify(env.NODE_ENV),
     },
-  };
-});
+  });
+};

@@ -15,6 +15,7 @@ import {
   Truck,
   CreditCard,
   Check,
+  Info,
 } from "lucide-react";
 import {
   MapContainer,
@@ -58,7 +59,8 @@ function FitBounds({ points }) {
 const getStatusConfig = (status) => {
   const map = {
     pending: { color: "bg-yellow-100 text-yellow-800", icon: Clock, text: "Chờ xử lý" },
-    preparing: { color: "bg-blue-100 text-blue-800", icon: ShoppingBag, text: "Đang chuẩn bị" },
+    preparing: { color: "bg-blue-100 text-blue-800", icon: ShoppingBag, text: "Đang chuẩn bị hàng" },
+    ready: { color: "bg-blue-100 text-blue-800", icon: ShoppingBag, text: "Đang chuẩn bị giao" },
     delivering: { color: "bg-purple-100 text-purple-800", icon: Truck, text: "Đang giao" },
     completed: { color: "bg-green-100 text-green-800", icon: CheckCircle, text: "Đã giao" },
     cancelled: { color: "bg-red-100 text-red-800", icon: XCircle, text: "Đã hủy" },
@@ -137,22 +139,29 @@ export default function OrderDetailPage() {
     const pollDelivery = async () => {
       try {
         const token = localStorage.getItem("token");
-        const res = await fetch(`${API_BASE}/api/delivery/order/${id}`, {
+        // 1. Gọi API lấy thông tin giao hàng (vị trí drone)
+        const deliveryRes = await fetch(`${API_BASE}/api/delivery/order/${id}`, {
           headers: token ? { Authorization: `Bearer ${token}` } : {},
         });
-        if (!res.ok) return;
-        const data = await res.json();
-        if (!mounted) return;
-        setDelivery(data);
-        setDronePos(data?.droneId?.currentLocationId?.coords || null);
-
-        if (data?.status === "arrived") {
-          const r2 = await fetch(`${API_BASE}/api/order/${id}`, {
-            headers: token ? { Authorization: `Bearer ${token}` } : {},
-          });
-          if (r2.ok) setOrder(await r2.json());
+        // 2. Gọi API lấy thông tin đơn hàng (để cập nhật status)
+        const orderRes = await fetch(`${API_BASE}/api/order/${id}`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
+        if (!mounted) return; // Kiểm tra component còn mounted không
+        // 3. Cập nhật state giao hàng
+        if (deliveryRes.ok) {
+          const deliveryData = await deliveryRes.json();
+          setDelivery(deliveryData);
+          setDronePos(deliveryData?.droneId?.currentLocationId?.coords || null);
         }
-      } catch {}
+        // 4. Cập nhật state đơn hàng (FIX QUAN TRỌNG NHẤT)
+        if (orderRes.ok) {
+          const orderData = await orderRes.json();
+          setOrder(orderData); // <--- Dòng này sẽ cập nhật lại 'cây trạng thái'
+        }
+      } catch (e) {
+        console.error("Lỗi polling:", e); // Nên thêm log để biết lỗi
+      }
     };
 
     pollDelivery();
@@ -252,7 +261,8 @@ export default function OrderDetailPage() {
   // --- Status Stepper Config ---
   const allStatuses = [
     { key: "pending", text: "Chờ xử lý", icon: Clock },
-    { key: "preparing", text: "Đang chuẩn bị", icon: ShoppingBag },
+    { key: "preparing", text: "Đang chuẩn bị hàng", icon: ShoppingBag },
+    { key: "ready", text: "Đang chuẩn bị giao", icon: ShoppingBag },
     { key: "delivering", text: "Đang giao", icon: Truck },
     { key: "completed", text: "Đã giao", icon: CheckCircle },
   ];
@@ -473,6 +483,19 @@ export default function OrderDetailPage() {
                 )}
               </div>
             </div>
+
+            {/* ✅ Thêm phần hiển thị ghi chú */}
+            {order.note && (
+              <div className="bg-white rounded-lg shadow-md p-6">
+                <h3 className="font-semibold text-lg text-gray-800 mb-3 flex items-center gap-2">
+                  <Info className="w-5 h-5 text-orange-600" />
+                  Ghi chú từ khách hàng
+                </h3>
+                <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+                  <p className="text-gray-700 text-sm whitespace-pre-wrap">{order.note}</p>
+                </div>
+              </div>
+            )}
 
             {/* Payment Summary Card */}
             <div className="bg-white rounded-lg shadow-md p-6">

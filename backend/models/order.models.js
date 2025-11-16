@@ -34,6 +34,7 @@ const OrderSchema = new mongoose.Schema(
     paymentId: { type: mongoose.Schema.Types.ObjectId, ref: "Payment" },
     deliveryId: { type: mongoose.Schema.Types.ObjectId, ref: "Delivery" },
     arrivedNotified: { type: Boolean, default: false }, // ✅ Flag để frontend biết drone đã tới
+    note: { type: String, trim: true },
   },
   { timestamps: true }
 );

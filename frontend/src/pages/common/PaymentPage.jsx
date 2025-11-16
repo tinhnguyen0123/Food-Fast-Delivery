@@ -44,12 +44,13 @@ export default function PaymentPage() {
   const navigate = useNavigate();
   const [cart, setCart] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [position, setPosition] = useState({ lat: 21.0278, lng: 105.8342 });
+  const [position, setPosition] = useState({ lat: 10.760159513948246, lng: 106.68223683790899 });
   const [address, setAddress] = useState("");
   const [query, setQuery] = useState("");
   const [suggestions, setSuggestions] = useState([]);
   const [paymentMethod, setPaymentMethod] = useState("COD");
   const [creating, setCreating] = useState(false);
+  const [note, setNote] = useState("");
 
   useEffect(() => {
     loadCart();
@@ -216,6 +217,7 @@ export default function PaymentPage() {
         })),
         paymentMethod,
         shippingAddress: { text: address, location: position },
+        note: note.trim(),
       };
 
       // 2. Gọi API tạo đơn hàng (1 LẦN DUY NHẤT)
@@ -362,6 +364,24 @@ export default function PaymentPage() {
             placeholder="Địa chỉ sẽ hiển thị ở đây..."
             className="border p-3 w-full rounded-lg h-20 resize-none"
           />
+        </div>
+
+        {/* ✅ Thêm phần ghi chú */}
+        <div className="bg-white p-6 rounded-lg shadow">
+          <div className="flex items-center gap-2 mb-3">
+            <h3 className="font-semibold">Ghi chú</h3>
+            <span className="text-sm text-gray-500 italic">(không bắt buộc)</span>
+          </div>
+          <textarea
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            placeholder="Ví dụ: Giao trước 12h, gọi chuông 2 lần..."
+            className="border p-3 w-full rounded-lg h-24 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            maxLength={500}
+          />
+          <div className="text-xs text-gray-500 text-right mt-1">
+            {note.length}/500 ký tự
+          </div>
         </div>
 
         <div className="bg-white p-6 rounded-lg shadow">

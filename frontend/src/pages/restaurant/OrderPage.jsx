@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react"; // Thêm useRef
 import { toast } from "react-toastify";
 import {
   Package,
@@ -11,9 +11,28 @@ import {
   DollarSign,
   Calendar,
   User,
-  Info, // Thêm icon mới
+  Info,
+  Navigation, // Thêm icon
 } from "lucide-react";
-
+import {
+  MapContainer,
+  TileLayer,
+  Marker,
+  Polyline,
+  useMap,
+  Popup,
+} from "react-leaflet"; // Thêm import react-leaflet
+import L from "leaflet"; // Thêm import leaflet
+import "leaflet/dist/leaflet.css"; // Thêm import CSS leaflet
+import iconRetinaUrl from "leaflet/dist/images/marker-icon-2x.png";
+import iconUrl from "leaflet/dist/images/marker-icon.png";
+import shadowUrl from "leaflet/dist/images/marker-shadow.png";
+// --- Cài đặt icon cho Leaflet ---
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({ iconRetinaUrl, iconUrl, shadowUrl });
+const restaurantIcon = L.divIcon({ className: "text-3xl", html: "🏠" });
+const customerIcon = L.divIcon({ className: "text-3xl", html: "📍" });
+const droneIcon = L.divIcon({ className: "text-2xl", html: "🚁" });
 // TABS và API_BASE giữ nguyên
 const TABS = [
   { key: "all", label: "Tất cả", icon: Package, color: "blue" },
@@ -25,27 +44,21 @@ const TABS = [
   { key: "cancelled", label: "Đã hủy", icon: XCircle, color: "red" },
 ];
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:5000";
-
 // (Toàn bộ logic: ensureRestaurantId, loadOrders, statusCounts, ... giữ nguyên)
 // ... (Phần logic từ code của bạn) ...
-
 // ===============================================
-// BẮT ĐẦU PHẦN COMPONENT CHÍNH (ĐÃ THAY ĐỔI)
+// BẮT ĐẦU PHẦN COMPONENT CHÍNH
 // ===============================================
-
 export default function OrdersPage() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState("all");
   const [restaurantId, setRestaurantId] = useState(localStorage.getItem("myRestaurantId") || "");
   const token = localStorage.getItem("token");
-
   // === TRẠNG THÁI MỚI ===
-  // Thêm state để theo dõi đơn hàng đang được chọn
   const [selectedOrder, setSelectedOrder] = useState(null);
-
+  const [trackingOrder, setTrackingOrder] = useState(null); // ✅ State cho modal theo dõi
   // (Toàn bộ logic: ensureRestaurantId, loadOrders, ... giữ nguyên)
-  // ...
   const ensureRestaurantId = async () => {
     if (restaurantId) return restaurantId;
     const cached = localStorage.getItem("myRestaurantId");
@@ -75,7 +88,6 @@ export default function OrdersPage() {
       return "";
     }
   };
-
   const loadOrders = async () => {
     setLoading(true);
     try {
@@ -97,11 +109,9 @@ export default function OrdersPage() {
       setLoading(false);
     }
   };
-
   useEffect(() => {
     loadOrders();
   }, []);
-
   const statusCounts = useMemo(
     () =>
       orders.reduce(
@@ -114,23 +124,16 @@ export default function OrdersPage() {
       ),
     [orders]
   );
-
   const ordersToShow = useMemo(
     () => (tab === "all" ? orders : orders.filter((o) => o.status === tab)),
     [orders, tab]
   );
-
-  // === CẬP NHẬT LOGIC KHI CHUYỂN TAB ===
-  // Khi chuyển tab, nếu đơn hàng đang chọn không còn trong danh sách mới,
-  // thì xóa lựa chọn.
   useEffect(() => {
     if (selectedOrder && !ordersToShow.find((o) => o._id === selectedOrder._id)) {
       setSelectedOrder(null);
     }
   }, [ordersToShow, selectedOrder]);
-
   // (Toàn bộ logic: confirmOrder, markReady, startDelivery, cancelOrder, getStatusBadge... giữ nguyên)
-  // ...
   const confirmOrder = async (orderId) => {
     try {
       const res = await fetch(`${API_BASE}/api/order/${orderId}`, {
@@ -142,18 +145,22 @@ export default function OrdersPage() {
         body: JSON.stringify({ status: "preparing" }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.message || "Xác nhận đơn thất bại");
-      const updatedOrder = { ...data, status: "preparing" };
+      if (!res.ok) throw new Error(data.message || "Lỗi xác nhận đơn");
+      const updatedOrder = data.order && data.order._id
+        ? {
+            ...data.order,
+            userId: data.order.userId || selectedOrder?.userId
+          }
+        : { ...selectedOrder, status: "preparing" };
       setOrders((prev) => prev.map((o) => (o._id === orderId ? updatedOrder : o)));
-      // Cập nhật cả đơn hàng đang chọn
       if (selectedOrder?._id === orderId) setSelectedOrder(updatedOrder);
+     
       toast.success("Đã xác nhận đơn hàng");
     } catch (e) {
       console.error(e);
       toast.error(e.message || "Lỗi xác nhận đơn");
     }
   };
-
   const markReady = async (orderId) => {
     try {
       const res = await fetch(`${API_BASE}/api/order/${orderId}`, {
@@ -165,17 +172,22 @@ export default function OrdersPage() {
         body: JSON.stringify({ status: "ready" }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.message || "Cập nhật trạng thái thất bại");
-      const updatedOrder = { ...data, status: "ready" };
+      if (!res.ok) throw new Error(data.message || "Lỗi đánh dấu sẵn sàng");
+      const updatedOrder = data.order && data.order._id
+        ? {
+            ...data.order,
+            userId: data.order.userId || selectedOrder?.userId
+          }
+        : { ...selectedOrder, status: "ready" };
       setOrders((prev) => prev.map((o) => (o._id === orderId ? updatedOrder : o)));
       if (selectedOrder?._id === orderId) setSelectedOrder(updatedOrder);
+     
       toast.success("Đơn đã sẵn sàng");
     } catch (e) {
       console.error(e);
       toast.error(e.message || "Lỗi cập nhật trạng thái");
     }
   };
-
   const startDelivery = async (order) => {
     try {
       if (!order.deliveryId) {
@@ -187,20 +199,15 @@ export default function OrdersPage() {
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ deliveryId: order.deliveryId }),
       });
-
       const text = await res.text();
       let data = {};
       try { data = text ? JSON.parse(text) : {}; } catch { data = {}; }
-
       if (!res.ok) {
         throw new Error(data.message || `Không thể bắt đầu giao (HTTP ${res.status})`);
       }
-
-      // Fallback: nếu backend không trả order, dùng order hiện tại + status mới
       const updatedOrder = data.order && data.order._id
         ? data.order
         : { ...order, status: "delivering" };
-
       setOrders((prev) => prev.map((o) => (o._id === order._id ? updatedOrder : o)));
       if (selectedOrder?._id === order._id) setSelectedOrder(updatedOrder);
       toast.success("Đã bắt đầu giao");
@@ -209,10 +216,8 @@ export default function OrdersPage() {
       toast.error(e.message || "Lỗi bắt đầu giao");
     }
   };
-
   const cancelOrder = async (orderId) => {
-   if (!window.confirm("Bạn có chắc muốn hủy đơn hàng này?")) return;
-
+  if (!window.confirm("Bạn có chắc muốn hủy đơn hàng này?")) return;
     try {
       const res = await fetch(`${API_BASE}/api/order/${orderId}`, {
         method: "PUT",
@@ -233,7 +238,6 @@ export default function OrdersPage() {
       toast.error(e.message || "Lỗi hủy đơn");
     }
   };
-
   const getStatusBadge = (status) => {
     const badges = {
       pending: { color: "bg-yellow-100 text-yellow-700 border-yellow-200", icon: Clock, text: "Chờ xử lý" },
@@ -246,7 +250,6 @@ export default function OrdersPage() {
     return badges[status] || badges.pending;
   };
   // ...
-
   // Loading state giữ nguyên
   if (loading) {
     return (
@@ -258,13 +261,12 @@ export default function OrdersPage() {
       </div>
     );
   }
-
   // ===============================================
-  // GIAO DIỆN MỚI
+  // GIAO DIỆN
   // ===============================================
   return (
     <div className="space-y-4">
-      {/* Header (giảm kích thước) */}
+      {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
         <div>
           <h1 className="text-xl font-bold text-gray-800">Quản lý đơn hàng</h1>
@@ -277,15 +279,13 @@ export default function OrdersPage() {
           🔄 Tải lại
         </button>
       </div>
-
-      {/* Status Tabs (giảm kích thước) */}
+      {/* Status Tabs */}
       <div className="bg-white rounded-md shadow-md p-2">
         <div className="flex gap-1 overflow-x-auto pb-1">
           {TABS.map((t) => {
             const Icon = t.icon;
             const isActive = tab === t.key;
             const count = statusCounts[t.key] || 0;
-
             return (
               <button
                 key={t.key}
@@ -306,8 +306,7 @@ export default function OrdersPage() {
           })}
         </div>
       </div>
-
-      {/* === BỐ CỤC MASTER-DETAIL MỚI === */}
+      {/* === BỐ CỤC MASTER-DETAIL === */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* --- CỘT BÊN TRÁI: DANH SÁCH ĐƠN HÀNG --- */}
         <div className="lg:col-span-1">
@@ -322,7 +321,6 @@ export default function OrdersPage() {
               </p>
             </div>
           ) : (
-            // Thêm max-h và overflow-y để cuộn
             <div className="space-y-2 lg:max-h-[calc(100vh-200px)] lg:overflow-y-auto pr-1">
               {ordersToShow.map((order) => (
                 <OrderSummaryCard
@@ -336,7 +334,6 @@ export default function OrdersPage() {
             </div>
           )}
         </div>
-
         {/* --- CỘT BÊN PHẢI: CHI TIẾT ĐƠN HÀNG --- */}
         <div className="lg:col-span-2">
           {selectedOrder ? (
@@ -347,6 +344,7 @@ export default function OrdersPage() {
               onReady={markReady}
               onStartDelivery={startDelivery}
               onCancel={cancelOrder}
+              onTrackDrone={() => setTrackingOrder(selectedOrder)} // ✅ Prop để mở modal
             />
           ) : (
             <div className="flex items-center justify-center h-full bg-white rounded-md shadow-md p-8 text-center">
@@ -359,12 +357,18 @@ export default function OrdersPage() {
           )}
         </div>
       </div>
+      {/* ✅ Modal theo dõi drone */}
+      {trackingOrder && (
+        <DroneTrackingModal
+          order={trackingOrder}
+          onClose={() => setTrackingOrder(null)}
+        />
+      )}
     </div>
   );
 }
-
 // ===============================================
-// COMPONENT MỚI: THẺ TÓM TẮT ĐƠN HÀNG
+// COMPONENT: THẺ TÓM TẮT ĐƠN HÀNG
 // ===============================================
 function OrderSummaryCard({ order, isSelected, onSelect, getStatusBadge }) {
   const badge = getStatusBadge(order.status);
@@ -377,7 +381,6 @@ function OrderSummaryCard({ order, isSelected, onSelect, getStatusBadge }) {
     completed: "border-green-500",
     cancelled: "border-red-500",
   };
-
   return (
     <button
       onClick={onSelect}
@@ -409,15 +412,12 @@ function OrderSummaryCard({ order, isSelected, onSelect, getStatusBadge }) {
     </button>
   );
 }
-
 // ===============================================
-// COMPONENT MỚI: CHI TIẾT ĐƠN HÀNG
-// (Đây chính là nội dung thẻ card cũ của bạn)
+// COMPONENT: CHI TIẾT ĐƠN HÀNG
 // ===============================================
-function OrderDetailView({ order, getStatusBadge, onConfirm, onReady, onStartDelivery, onCancel }) {
+function OrderDetailView({ order, getStatusBadge, onConfirm, onReady, onStartDelivery, onCancel, onTrackDrone }) { // Thêm onTrackDrone
   const badge = getStatusBadge(order.status);
   const BadgeIcon = badge.icon;
-
   return (
     <div className="bg-white rounded-md shadow-md overflow-hidden">
       {/* Order Header */}
@@ -443,7 +443,6 @@ function OrderDetailView({ order, getStatusBadge, onConfirm, onReady, onStartDel
           </span>
         </div>
       </div>
-
       {/* Order Body */}
       <div className="p-3">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 mb-3">
@@ -470,7 +469,15 @@ function OrderDetailView({ order, getStatusBadge, onConfirm, onReady, onStartDel
               )}
             </div>
           </div>
-
+          {/* Thêm ghi chú nếu có */}
+          {order.note && (
+            <div className="mb-3 p-2 bg-orange-50 border border-orange-200 rounded-md">
+              <h4 className="font-semibold text-xs text-orange-800 mb-1 flex items-center gap-1">
+                📝 Ghi chú từ khách
+              </h4>
+              <p className="text-xs text-gray-700 italic">{order.note}</p>
+            </div>
+          )}
           {/* Order Items */}
           <div className="space-y-2">
             <h4 className="font-semibold text-sm text-gray-800 flex items-center gap-1">
@@ -483,7 +490,7 @@ function OrderDetailView({ order, getStatusBadge, onConfirm, onReady, onStartDel
                   <li key={idx} className="flex justify-between items-center">
                     <div className="flex items-center gap-1">
                       <span className="w-5 h-5 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-xs font-semibold">
-                        {item.quantity}
+                        x{item.quantity}
                       </span>
                       <span className="font-medium text-gray-700">
                         {item.productId?.name || item.name || "Món"}
@@ -501,7 +508,6 @@ function OrderDetailView({ order, getStatusBadge, onConfirm, onReady, onStartDel
             </div>
           </div>
         </div>
-
         {/* Total Price */}
         <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-md p-2 mb-3">
           <div className="flex justify-between items-center text-sm">
@@ -514,7 +520,6 @@ function OrderDetailView({ order, getStatusBadge, onConfirm, onReady, onStartDel
             </span>
           </div>
         </div>
-
         {/* Action Buttons */}
         <div className="flex flex-wrap gap-2">
           {order.status === "pending" && (
@@ -537,18 +542,135 @@ function OrderDetailView({ order, getStatusBadge, onConfirm, onReady, onStartDel
                 Đơn đã sẵn sàng. Vui lòng qua trang Drone để gán drone.
               </span>
             ))}
-          
-          {/* Nút hủy: Cho phép hủy khi đang chờ hoặc đang chuẩn bị */}
+         
+          {/* Nút hủy */}
           {(order.status === "pending" || order.status === "preparing") && (
              <button onClick={() => onCancel(order._id)} className="flex-1 sm:flex-none bg-red-100 text-red-600 px-4 py-2 rounded-md font-semibold hover:bg-red-200 transition-all flex items-center justify-center gap-1 text-sm">
-              <XCircle className="w-4 h-4" /> Hủy đơn
+               <XCircle className="w-4 h-4" /> Hủy đơn
             </button>
           )}
-
+          {/* ✅ Nút theo dõi drone (THÊM MỚI) */}
+          {(order.status === "delivering" || order.status === "completed") && order.deliveryId && (
+             <button onClick={onTrackDrone} className="flex-1 sm:flex-none bg-teal-500 text-white px-4 py-2 rounded-md font-semibold hover:bg-teal-600 transition-all flex items-center justify-center gap-1 text-sm">
+               <Navigation className="w-4 h-4" /> Theo dõi Drone
+            </button>
+          )}
+          {/* Trạng thái Hoàn thành/Đã hủy */}
           {(order.status === "completed" || order.status === "cancelled") && (
             <div className={`w-full text-center py-2 rounded-md font-medium text-sm ${order.status === "completed" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
               {order.status === "completed" ? "✅ Đơn hàng đã hoàn thành" : "❌ Đơn hàng đã bị hủy"}
             </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+// ===============================================
+// COMPONENT MỚI: MODAL THEO DÕI DRONE
+// ===============================================
+function DroneTrackingModal({ order, onClose }) {
+  const [delivery, setDelivery] = useState(null);
+  const [dronePos, setDronePos] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const pollTimerRef = useRef(null);
+  const restaurantCoords = order.restaurantId?.locationId?.coords;
+  const customerCoords = order.shippingAddress?.location;
+  useEffect(() => {
+    let mounted = true;
+    const pollDelivery = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        const res = await fetch(`${API_BASE}/api/delivery/order/${order._id}`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
+        if (!mounted) return;
+        if (res.ok) {
+          const data = await res.json();
+          setDelivery(data);
+          setDronePos(data?.droneId?.currentLocationId?.coords || null);
+        }
+      } catch (e) {
+        console.error("Poll delivery error:", e);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    };
+    pollDelivery();
+    pollTimerRef.current = setInterval(pollDelivery, 3000); // Cập nhật mỗi 3s
+    return () => {
+      mounted = false;
+      if (pollTimerRef.current) {
+        clearInterval(pollTimerRef.current);
+      }
+    };
+  }, [order._id]);
+  const route = useMemo(() => {
+    if (!restaurantCoords || !customerCoords) return [];
+    const path = [];
+    // Tạo đường thẳng đơn giản
+    for (let i = 0; i <= 20; i++) {
+      const t = i / 20;
+      path.push([
+        restaurantCoords.lat + (customerCoords.lat - restaurantCoords.lat) * t,
+        restaurantCoords.lng + (customerCoords.lng - restaurantCoords.lng) * t,
+      ]);
+    }
+    return path;
+  }, [restaurantCoords, customerCoords]);
+  const droneStatus = delivery?.droneId?.status;
+  const statusMessage =
+    droneStatus === "returning"
+      ? "Drone đang quay về nhà hàng."
+      : droneStatus === "delivering"
+      ? "Drone đang trên đường giao hàng."
+      : delivery?.status === "arrived"
+      ? "Drone đã đến nơi. Chờ khách xác nhận."
+      : delivery?.status === "completed"
+      ? "Giao hàng hoàn tất. Drone đã hoặc đang quay về."
+      : "Đang tải dữ liệu vị trí drone...";
+  return (
+    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl h-[90vh] flex flex-col overflow-hidden">
+        <div className="p-4 border-b flex justify-between items-center bg-gray-50">
+          <div>
+            <h2 className="text-xl font-bold text-gray-800">Theo dõi đơn hàng #{order._id.slice(-6)}</h2>
+            <p className="text-sm text-gray-600">{statusMessage}</p>
+          </div>
+          <button onClick={onClose} className="p-2 hover:bg-gray-200 rounded-full transition-colors">
+            <XCircle className="w-6 h-6 text-gray-500" />
+          </button>
+        </div>
+        <div className="flex-grow relative">
+          {loading ? (
+            <div className="absolute inset-0 flex items-center justify-center">
+              <p>Đang tải bản đồ...</p>
+            </div>
+          ) : (
+            <MapContainer
+              // Sử dụng tọa độ nhà hàng làm trung tâm, fallback về một vị trí mặc định
+              center={[restaurantCoords?.lat || 10.76023329529749, restaurantCoords?.lng ||  106.68225829558169]}
+              zoom={14}
+              style={{ height: "100%", width: "100%" }}
+            >
+              <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+              {restaurantCoords && (
+                <Marker position={[restaurantCoords.lat, restaurantCoords.lng]} icon={restaurantIcon}>
+                  <Popup>Nhà hàng của bạn</Popup>
+                </Marker>
+              )}
+              {customerCoords && (
+                <Marker position={[customerCoords.lat, customerCoords.lng]} icon={customerIcon}>
+                  <Popup>Địa chỉ khách hàng</Popup>
+                </Marker>
+              )}
+              {dronePos && (
+                <Marker position={[dronePos.lat, dronePos.lng]} icon={droneIcon}>
+                  <Popup>Vị trí Drone</Popup>
+                </Marker>
+              )}
+              {route.length > 0 && <Polyline positions={route} color="#8b5cf6" weight={4} dashArray="5,5" />}
+            </MapContainer>
           )}
         </div>
       </div>

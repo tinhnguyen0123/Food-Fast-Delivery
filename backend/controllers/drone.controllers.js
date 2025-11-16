@@ -61,6 +61,29 @@ class DroneController {
     }
   }
 
+  // ✅ Cập nhật trạng thái drone (bảo trì/sẵn sàng)
+  async updateStatus(req, res) {
+    try {
+      const { id } = req.params;
+      const { status } = req.body;
+      const result = await DroneService.updateDroneStatus(id, status);
+      res.status(200).json(result);
+    } catch (e) {
+      res.status(400).json({ message: e.message });
+    }
+  }
+
+  // ✅ Sạc đầy pin cho drone
+  async chargeDrone(req, res) {
+    try {
+      const { id } = req.params;
+      const result = await DroneService.chargeDrone(id);
+      res.status(200).json(result);
+    } catch (e) {
+      res.status(400).json({ message: e.message });
+    }
+  }
+
   // Xóa drone
   async delete(req, res) {
     try {

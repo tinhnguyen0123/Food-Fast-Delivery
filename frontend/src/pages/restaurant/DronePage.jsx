@@ -15,7 +15,9 @@ import {
   X,
   Search,
   SortAsc,
-  SortDesc
+  SortDesc,
+  Wrench, // ◀️ Mới
+  Power, // ◀️ Mới
 } from "lucide-react";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:5000";
@@ -38,7 +40,6 @@ export default function DronesPage() {
   const [sortOrder, setSortOrder] = useState("asc");
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [selectedOrderForAssign, setSelectedOrderForAssign] = useState(null);
-
   const token = localStorage.getItem("token");
 
   // ✅ Lấy hoặc tạo myRestaurantId
@@ -72,7 +73,6 @@ export default function DronesPage() {
     try {
       const id = await ensureRestaurantId();
       if (!id) throw new Error("Không tìm thấy nhà hàng");
-
       // ✅ Lấy drone theo nhà hàng
       const droneRes = await fetch(`${API_BASE}/api/drone/restaurant/${id}`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -80,14 +80,12 @@ export default function DronesPage() {
       const droneData = await droneRes.json();
       if (!droneRes.ok) throw new Error(droneData.message || "Tải drone thất bại");
       setDrones(Array.isArray(droneData) ? droneData : droneData.drones || []);
-
       // ✅ Lấy đơn hàng thuộc nhà hàng này và chỉ lấy status = "ready"
       const orderRes = await fetch(`${API_BASE}/api/order/restaurant/${id}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const orderData = await orderRes.json();
       if (!orderRes.ok) throw new Error(orderData.message || "Tải đơn chờ gán thất bại");
-
       const orders = Array.isArray(orderData) ? orderData : orderData.orders || [];
       const ready = orders.filter((o) => o.status === "ready"); // ✅ chỉ lấy "ready"
       setPendingOrders(ready);
@@ -103,7 +101,7 @@ export default function DronesPage() {
     loadData();
   }, []);
 
-  const idleDrones = drones.filter((d) => d.status === "idle");
+  const idleDrones = drones.filter((d) => d.status === "idle" && (d.batteryLevel ?? 0) >= 20);
   const activeDrones = drones.filter((d) => d.status === "delivering" || d.status === "charging");
 
   // ✅ Gán drone thủ công
@@ -116,7 +114,6 @@ export default function DronesPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Gán drone thất bại");
-
       toast.success(" Đã gán drone cho đơn hàng!");
       setPendingOrders((prev) => prev.filter((o) => o._id !== orderId));
       setDrones((prev) => prev.map((d) => (d._id === droneId ? { ...d, status: "delivering" } : d)));
@@ -165,7 +162,6 @@ export default function DronesPage() {
         capacity: Number(newDrone.capacity ?? 5),
         restaurantId: rid || (await ensureRestaurantId()),
       };
-
       const res = await fetch(`${API_BASE}/api/drone`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
@@ -173,7 +169,6 @@ export default function DronesPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Tạo drone thất bại");
-
       toast.success(" Đã tạo drone");
       setShowAdd(false);
       setNewDrone({ code: "", name: "", batteryLevel: 100, capacity: 5 });
@@ -183,6 +178,46 @@ export default function DronesPage() {
       toast.error(e.message || "Lỗi tạo drone");
     }
   };
+
+  // ----------------------------------------------------------------
+  // ⬇️ CÁC HÀM MỚI ĐƯỢC THÊM TỪ CODE MẪU ⬇️
+  // ----------------------------------------------------------------
+  // ✅ Chuyển đổi trạng thái bảo trì
+  const toggleMaintenance = async (drone) => {
+    const newStatus = drone.status === "maintenance" ? "idle" : "maintenance";
+    try {
+      const res = await fetch(`${API_BASE}/api/drone/${drone._id}/status`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ status: newStatus }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message);
+      toast.success(`Đã chuyển drone #${drone.code} sang trạng thái ${newStatus === 'maintenance' ? 'bảo trì' : 'sẵn sàng'}.`);
+      await loadData();
+    } catch (e) {
+      toast.error(e.message);
+    }
+  };
+
+  // ✅ Sạc pin cho drone
+  const chargeDrone = async (droneId) => {
+    try {
+      const res = await fetch(`${API_BASE}/api/drone/${droneId}/charge`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message);
+      toast.info(data.message);
+      await loadData(); // Tải lại để cập nhật trạng thái "charging"
+    } catch (e) {
+      toast.error(e.message);
+    }
+  };
+  // ----------------------------------------------------------------
+  // ⬆️ KẾT THÚC CÁC HÀM MỚI ⬆️
+  // ----------------------------------------------------------------
 
   // Helper functions
   const getStatusBadge = (status) => {
@@ -409,6 +444,10 @@ export default function DronesPage() {
               {sortOrder === "asc" ? <SortAsc className="w-5 h-5" /> : <SortDesc className="w-5 h-5" />}
             </button>
           </div>
+
+          {/* ---------------------------------------------------------------- */}
+          {/* ⬇️ BẢNG DRONE ĐÃ ĐƯỢC CẬP NHẬT ⬇️ */}
+          {/* ---------------------------------------------------------------- */}
           <div className="bg-white rounded-lg shadow-md overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
@@ -418,12 +457,13 @@ export default function DronesPage() {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Trạng thái</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pin (%)</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tải trọng (kg)</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Hành động</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {filteredAndSortedDrones.length === 0 ? (
                   <tr>
-                    <td colSpan="5" className="px-6 py-4 text-center text-gray-500">
+                    <td colSpan="6" className="px-6 py-4 text-center text-gray-500">
                       Không tìm thấy drone
                     </td>
                   </tr>
@@ -431,6 +471,7 @@ export default function DronesPage() {
                   filteredAndSortedDrones.map((drone) => {
                     const badge = getStatusBadge(drone.status);
                     const batteryColor = getBatteryColor(drone.batteryLevel || 0);
+                    const isActionable = !['delivering', 'returning'].includes(drone.status); // Thêm logic này
                     return (
                       <tr key={drone._id} className="hover:bg-gray-50 transition-all">
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{drone.code || drone._id.slice(-8)}</td>
@@ -445,6 +486,35 @@ export default function DronesPage() {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                           {drone.currentLoad || 0}/{drone.capacity || 0}
+                        </td>
+                        {/* ⬇️ CỘT HÀNH ĐỘNG MỚI ⬇️ */}
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => toggleMaintenance(drone)}
+                              disabled={!isActionable}
+                              className={`p-2 rounded-md transition-colors ${
+                                isActionable
+                                  ? drone.status === 'maintenance' ? 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                  : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                              }`}
+                              title={drone.status === 'maintenance' ? 'Hoàn tất bảo trì' : 'Bảo trì'}
+                            >
+                              <Wrench className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => chargeDrone(drone._id)}
+                              disabled={!isActionable || drone.batteryLevel === 100}
+                              className={`p-2 rounded-md transition-colors ${
+                                isActionable && drone.batteryLevel < 100
+                                  ? 'bg-green-100 text-green-700 hover:bg-green-200'
+                                  : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                              }`}
+                              title="Sạc đầy pin"
+                            >
+                              <Power className="w-4 h-4" />
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     );

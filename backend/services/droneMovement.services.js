@@ -21,83 +21,87 @@ class DroneMovementService {
   }
 
   // ✅ Bắt đầu di chuyển drone theo delivery
-  async startMovement(deliveryId) {
-    try {
-      const delivery = await DeliveryRepository.getDeliveryById(deliveryId);
-      if (!delivery || !delivery.droneId) return;
+  // ...existing code...
+async startMovement(deliveryId) {
+  try {
+    const delivery = await DeliveryRepository.getDeliveryById(deliveryId);
+    if (!delivery) throw new Error("Không tìm thấy delivery");
 
-      const drone = delivery.droneId;
-      const pickup = delivery.pickupLocationId?.coords;
-      const dropoff = delivery.dropoffLocationId?.coords;
+    const drone = delivery.droneId;
+    const pickup = delivery.pickupLocationId?.coords; // Nhà hàng
+    const dropoff = delivery.dropoffLocationId?.coords; // Khách hàng
 
-      if (!pickup || !dropoff) {
-        console.warn("Missing pickup/dropoff coords for delivery", deliveryId);
-        return;
-      }
-
-      const route = this.createStraightRoute(pickup, dropoff, 20);
-      if (route.length === 0) {
-        console.warn("No route created for delivery", deliveryId);
-        return;
-      }
-
-      // Dừng movement cũ nếu có
-      this.stopMovement(drone._id);
-
-      let currentIndex = 0;
-      const totalSteps = route.length;
-      const intervalMs = 3000;
-
-      console.log(`🚁 Drone ${drone.code} bắt đầu bay thẳng với ${totalSteps} điểm`);
-
-      const interval = setInterval(async () => {
-        try {
-          if (currentIndex >= totalSteps) {
-            await this.stopMovement(drone._id);
-
-            // ✅ Đã đến điểm giao
-            await DeliveryRepository.updateDelivery(delivery._id, { status: "arrived" });
-            await OrderRepository.updateOrder(delivery.orderId, { arrivedNotified: true });
-            console.log(`✅ Drone ${drone.code} đã đến đích`);
-
-          
-            return;
-          }
-
-          const currentPos = route[currentIndex];
-          let locationId = drone.currentLocationId?._id || drone.currentLocationId;
-
-          if (locationId) {
-            await LocationRepository.updateLocation(locationId, {
-              coords: { lat: currentPos.lat, lng: currentPos.lng },
-            });
-          } else {
-            const newLoc = await LocationRepository.createLocation({
-              type: "drone",
-              coords: { lat: currentPos.lat, lng: currentPos.lng },
-              address: `Drone ${drone.code} position`,
-            });
-            locationId = newLoc._id;
-            await DroneRepository.updateDrone(drone._id, { currentLocationId: locationId });
-          }
-
-          console.log(
-            `🚁 Drone ${drone.code} tại [${currentPos.lat.toFixed(5)}, ${currentPos.lng.toFixed(
-              5
-            )}] (${currentIndex + 1}/${totalSteps})`
-          );
-
-          currentIndex++;
-        } catch (err) {
-          console.error("Movement interval error:", err);
-        }
-      }, intervalMs);
-
-      this.activeMovements.set(drone._id.toString(), interval);
-    } catch (e) {
-      console.error("startMovement error:", e);
+    if (!pickup || !dropoff) {
+      console.log("Thiếu tọa độ pickup hoặc dropoff");
+      return;
     }
+
+    // ✅ Set vị trí drone về nhà hàng trước khi bay
+    let locationId = drone.currentLocationId?._id || drone.currentLocationId;
+    
+    if (locationId) {
+      await LocationRepository.updateLocation(locationId, {
+        coords: { lat: pickup.lat, lng: pickup.lng },
+      });
+    } else {
+      const newLoc = await LocationRepository.createLocation({
+        type: "drone",
+        coords: { lat: pickup.lat, lng: pickup.lng },
+        address: `Drone ${drone.code} at restaurant`,
+      });
+      locationId = newLoc._id;
+      await DroneRepository.updateDrone(drone._id, { 
+        currentLocationId: locationId 
+      });
+    }
+
+    // ✅ Tạo route từ nhà hàng (pickup) đến khách hàng (dropoff)
+    const route = this.createStraightRoute(pickup, dropoff, 20);
+    if (route.length === 0) return;
+
+    this.stopMovement(drone._id);
+
+    let currentIndex = 0;
+    const totalSteps = route.length;
+    const intervalMs = 3000;
+
+    console.log(`🚁 Drone ${drone.code} bắt đầu bay từ nhà hàng với ${totalSteps} điểm`);
+
+    const interval = setInterval(async () => {
+      try {
+        if (currentIndex >= totalSteps) {
+          await this.stopMovement(drone._id);
+          await DeliveryRepository.updateDelivery(delivery._id, { status: "arrived" });
+          await OrderRepository.updateOrder(delivery.orderId, { arrivedNotified: true });
+          console.log(`✅ Drone ${drone.code} đã đến đích`);
+          return;
+        }
+
+        const currentPos = route[currentIndex];
+
+        // Cập nhật vị trí
+        await LocationRepository.updateLocation(locationId, {
+          coords: { lat: currentPos.lat, lng: currentPos.lng },
+        });
+
+        console.log(
+          `🚁 Drone ${drone.code} tại [${currentPos.lat.toFixed(5)}, ${currentPos.lng.toFixed(
+            5
+          )}] (${currentIndex + 1}/${totalSteps})`
+        );
+
+        currentIndex++;
+      } catch (err) {
+        console.error("Movement interval error:", err);
+      }
+    }, intervalMs);
+
+    this.activeMovements.set(drone._id.toString(), interval);
+  } catch (e) {
+    console.error("startMovement error:", e);
   }
+}
+// ...existing code...
 
   // ✅ Quay về nhà hàng sau khi giao (dropoff -> pickup)
     // ✅ Quay về nhà hàng sau khi giao (dropoff -> pickup)
@@ -178,9 +182,7 @@ class DroneMovementService {
           }
 
           console.log(
-            `↩️ Drone ${drone.code} về nhà hàng tại [${pos.lat.toFixed(
-              5
-            )}, ${pos.lng.toFixed(5)}] (${idx + 1}/${total})`
+            `↩️ Drone ${drone.code} về nhà hàng tại [${pos.lat.toFixed(5)}, ${pos.lng.toFixed(5)}] (${idx + 1}/${total})`
           );
 
           idx++;

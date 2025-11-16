@@ -21,6 +21,7 @@ import {
   MapPin,
   Mail,
   ShoppingCart,
+  Info,
 } from "lucide-react";
 
 // ✅ Khai báo API base từ biến môi trường (hoặc mặc định localhost)
@@ -604,6 +605,23 @@ export default function OrdersPage() {
                   </div>
                 </div>
               </div>
+
+              {/* ✅ Thêm section ghi chú */}
+              {selectedOrder.note && (
+                <div className="border border-orange-200 rounded-xl bg-orange-50">
+                  <div className="flex items-center gap-3 p-4 border-b border-orange-200">
+                    <Info className="w-5 h-5 text-orange-600" />
+                    <h4 className="text-lg font-semibold text-gray-800">
+                      Ghi chú từ khách hàng
+                    </h4>
+                  </div>
+                  <div className="p-4">
+                    <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">
+                      {selectedOrder.note}
+                    </p>
+                  </div>
+                </div>
+              )}
             </div>
             {/* Kết thúc giao diện mới */}
             

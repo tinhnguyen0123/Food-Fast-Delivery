@@ -46,8 +46,7 @@ function MapUpdater({ position }) {
 
 export default function RestaurantRegisterPage() {
   const navigate = useNavigate();
-  const [loading, setLoading] = useState(false);
-  const [creating, setCreating] = useState(false);
+  //const [creating, setCreating] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
 
   // Form fields
