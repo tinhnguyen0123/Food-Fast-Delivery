@@ -154,7 +154,7 @@ export default function OrdersPage() {
         : { ...selectedOrder, status: "preparing" };
       setOrders((prev) => prev.map((o) => (o._id === orderId ? updatedOrder : o)));
       if (selectedOrder?._id === orderId) setSelectedOrder(updatedOrder);
-     
+
       toast.success("Đã xác nhận đơn hàng");
     } catch (e) {
       console.error(e);
@@ -181,7 +181,7 @@ export default function OrdersPage() {
         : { ...selectedOrder, status: "ready" };
       setOrders((prev) => prev.map((o) => (o._id === orderId ? updatedOrder : o)));
       if (selectedOrder?._id === orderId) setSelectedOrder(updatedOrder);
-     
+
       toast.success("Đơn đã sẵn sàng");
     } catch (e) {
       console.error(e);
@@ -542,7 +542,7 @@ function OrderDetailView({ order, getStatusBadge, onConfirm, onReady, onStartDel
                 Đơn đã sẵn sàng. Vui lòng qua trang Drone để gán drone.
               </span>
             ))}
-         
+
           {/* Nút hủy */}
           {(order.status === "pending" || order.status === "preparing") && (
              <button onClick={() => onCancel(order._id)} className="flex-1 sm:flex-none bg-red-100 text-red-600 px-4 py-2 rounded-md font-semibold hover:bg-red-200 transition-all flex items-center justify-center gap-1 text-sm">
