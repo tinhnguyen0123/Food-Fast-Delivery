@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { toast } from "react-toastify";
-import { 
+import {
   Search, Plus, Edit2, Trash2, Eye, EyeOff, X,
   ImageIcon, DollarSign, Package, Tag, RefreshCw,
   UtensilsCrossed, TrendingUp
@@ -463,7 +463,7 @@ export default function MenuPage() {
                     <Edit2 className="w-4 h-4" />
                     Sửa
                   </button>
-                  
+
                   <button
                     onClick={() => toggleAvailable(item)}
                     title={item.available === false ? "Hiện món" : "Tạm ẩn món (không hiển thị cho khách)"}

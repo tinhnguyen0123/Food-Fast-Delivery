@@ -1,19 +1,19 @@
 import { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
 import { useNavigate } from 'react-router-dom';
-import { 
-  User, 
-  Mail, 
-  Phone, 
-  Calendar, 
-  Shield, 
-  Edit2, 
-  Save, 
-  X, 
-  Lock, 
-  Eye, 
+import {
+  User,
+  Mail,
+  Phone,
+  Calendar,
+  Shield,
+  Edit2,
+  Save,
+  X,
+  Lock,
+  Eye,
   EyeOff,
-  ArrowLeft 
+  ArrowLeft
 } from 'lucide-react';
 
 export default function ProfilePage() {
@@ -211,7 +211,7 @@ export default function ProfilePage() {
             <ArrowLeft className="w-5 h-5" />
             <span className="font-medium">Quay lại trang chủ</span>
           </button>
-          
+
           <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
             Thông tin tài khoản
           </h1>
@@ -301,7 +301,7 @@ export default function ProfilePage() {
                     <Edit2 className="w-5 h-5 group-hover:scale-110 transition-transform" />
                     <span className="font-semibold">Chỉnh sửa thông tin</span>
                   </button>
-                  
+
                   <button
                     onClick={() => setShowPwdForm((v) => !v)}
                     className="bg-gray-800 text-white px-6 py-3 rounded-xl hover:bg-black transition-all duration-200 flex items-center justify-center gap-2 group"
@@ -393,7 +393,7 @@ export default function ProfilePage() {
                         </>
                       )}
                     </button>
-                    
+
                     <button
                       type="button"
                       onClick={handleCancel}
@@ -544,7 +544,7 @@ export default function ProfilePage() {
                       </>
                     )}
                   </button>
-                  
+
                   <button
                     type="button"
                     onClick={() => { setShowPwdForm(false); setPwd({ oldPassword:'', newPassword:'', confirmPassword:'' }); }}
