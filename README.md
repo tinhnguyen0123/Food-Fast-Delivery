@@ -1,224 +1,290 @@
 # Food Fast Delivery 
 
-Ứng dụng giao đồ ăn sử dụng drone. Hệ thống hỗ trợ 3 vai trò: Khách hàng, Nhà hàng và Admin; gồm quản lý thực đơn, giỏ hàng, đơn hàng, giao hàng bằng drone, theo dõi trạng thái và phân trang sản phẩm.
+Ứng dụng giao đồ ăn hiện đại sử dụng công nghệ drone, hỗ trợ đầy đủ tính năng quản lý đơn hàng, thực đơn, drone và thống kê doanh thu cho 3 vai trò: Khách hàng, Nhà hàng và Admin.
 
-## 1) Mục tiêu dự án
+# 📋 Mục lục
 
-- Cho phép khách hàng duyệt món, tìm kiếm, lọc theo danh mục, thêm vào giỏ và đặt hàng.
-- Nhà hàng quản lý thực đơn (thêm/sửa/xóa/ẩn hiện), theo dõi đơn và điều phối drone.
-- Drone nhận đơn, chuyển trạng thái giao hàng; khách xác nhận hoàn thành.
-- Hệ thống thông báo cho khách khi đơn bắt đầu giao và nhắc xác nhận.
-- Kiến trúc backend 3 lớp rõ ràng: Controller → Service → Repository → Model.
+✨ Tính năng chính
+🏗️ Kiến trúc hệ thống
+🛠️ Công nghệ sử dụng
+📁 Cấu trúc thư mục
+⚙️ Cài đặt & Chạy
+🔐 Cấu hình môi trường
+📱 Các trang chính
+🔄 Luồng nghiệp vụ
+📡 API Endpoints
+🎨 Giao diện
+🚀 Tính năng nổi bật
+🧪 Testing
+📈 Roadmap
+🤝 Đóng góp
+📄 License
 
-## 2) Kiến trúc
+# ✨ Tính năng chính
 
-Backend theo mô hình 3 lớp:
-- Controllers: nhận request/response (ví dụ: [backend/controllers/order.controllers.js](backend/controllers/order.controllers.js))
-- Services: xử lý nghiệp vụ (ví dụ: [backend/services/product.services.js](backend/services/product.services.js))
-- Repositories: truy cập database (MongoDB)
-- Models: định nghĩa schema
-- Kết nối DB: [backend/config/db.js](backend/config/db.js)
-- Điểm vào server: [backend/index.js](backend/index.js)
+👤 Khách hàng
+✅ Duyệt & Tìm kiếm sản phẩm
 
-Frontend (React + Vite + Tailwind):
-- Trang khách: sản phẩm, tìm kiếm, phân trang, giỏ hàng, đặt hàng
-- Trang nhà hàng: quản lý menu, drone, đơn hàng
-- Trang chủ/giới thiệu: [frontend/src/pages/common/HomePage.jsx](frontend/src/pages/common/HomePage.jsx)
-- Trang sản phẩm (khách): [frontend/src/pages/common/ProductsPage.jsx](frontend/src/pages/common/ProductsPage.jsx)
-- Quản lý thực đơn (nhà hàng): [frontend/src/pages/restaurant/MenuPage.jsx](frontend/src/pages/restaurant/MenuPage.jsx)
-- Quản lý drone (nhà hàng): [frontend/src/pages/restaurant/DronePage.jsx](frontend/src/pages/restaurant/DronePage.jsx)
+Xem danh sách món ăn theo danh mục/nhà hàng
+Tìm kiếm món ăn theo tên
+Phân trang client-side (10/20/50/100 món/trang)
+Lọc theo giá, đánh giá, khoảng cách
+🛒 Giỏ hàng thông minh
 
-## 3) Chức năng chính đã hoàn thành
+Thêm/xóa/cập nhật số lượng món
+Tự động gộp món từ cùng nhà hàng
+Tính toán phí giao hàng tự động
+Lưu giỏ hàng giữa các phiên
+📦 Quản lý đơn hàng
 
-Khách hàng
-- Duyệt sản phẩm theo danh mục/nhà hàng, tìm kiếm theo tên.
-- Phân trang phía client trong trang sản phẩm: [frontend/src/pages/common/ProductsPage.jsx](frontend/src/pages/common/ProductsPage.jsx).
-- Giỏ hàng: tạo giỏ, thêm sản phẩm, tạo đơn (API dùng trong code).
-- Nhận thông báo khi đơn chuyển sang “đang giao” và nhắc xác nhận sau 10 giây.
-- Xác nhận hoàn thành đơn tại trang chi tiết (endpoint riêng PUT `/api/order/:id/confirm-completed`).
+Xem lịch sử đơn hàng
+Theo dõi trạng thái realtime
+Nhận thông báo khi drone đến nơi
+Xác nhận đã nhận hàng
+Đánh giá đơn hàng
+💳 Thanh toán linh hoạt
 
-Nhà hàng
-- Quản lý thực đơn: tạo/sửa/xóa món; tải ảnh; ẩn/hiện món.
-- Khi “Tạm ẩn”, món không hiển thị cho khách; món đã có trong giỏ có thể bị loại khi tạo đơn (được thông báo).
-- Quản lý/quan sát drone và đơn hàng (giao diện tại [frontend/src/pages/restaurant/DronePage.jsx](frontend/src/pages/restaurant/DronePage.jsx)).
+COD (Thanh toán khi nhận hàng)
+MoMo Wallet
+Chọn địa chỉ giao hàng trên bản đồ
+Tìm kiếm địa chỉ tự động (Nominatim API)
+🔔 Thông báo realtime
 
-Drone & giao hàng
-- Drone nhận đơn, chuyển trạng thái đơn sang “delivering”.
-- Sau khi khách xác nhận hoàn thành, đơn “completed”, drone về trạng thái “sẵn sàng” (idle).
-- Giảm pin drone 15% cho mỗi đơn hoàn thành (nghiệp vụ xử lý trong Order/Delivery/Drone service).
+Drone đã nhận đơn và đang bay đến
+Đơn hàng đã đến nơi (sau 10s tự động nhắc)
+Trạng thái đơn hàng thay đổi
+🏪 Nhà hàng
+📋 Quản lý thực đơn
 
-Admin
-- (Tuỳ cấu hình) Xem danh sách đơn toàn hệ thống qua endpoint tổng.
+Thêm/sửa/xóa món ăn
+Upload ảnh món ăn (hỗ trợ JPG, PNG, WebP)
+Ẩn/hiện món ăn tạm thời
+Phân loại theo danh mục
+Thống kê số lượng món đang bán/ẩn
+🚁 Quản lý Drone
 
-## 4) Thư mục dự án
+Xem danh sách drone và trạng thái
+Thêm drone mới (mã, tên, pin, tải trọng)
+Gán đơn hàng cho drone (thủ công/tự động)
+Theo dõi pin, tải trọng, vị trí
+Bật/tắt trạng thái bảo trì
+Sạc pin drone (100% trong 1s)
+Trạng thái drone: idle, delivering, returning, charging, maintenance
+📊 Thống kê & Báo cáo
 
-```
-README.md
-backend/
-  .env
-  api.http
-  index.js
-  package.json
-  config/
-    db.js
-  controllers/
-    auth.controllers.js
-    cart.controllers.js
-    delivery.controllers.js
-    drone.controllers.js
-    location.controllers.js
-    order.controllers.js
-    payment.controllers.js
-    ...
-  middlewares/
-    ...
-  models/
-  repositories/
-  routes/
-  services/
-  uploads/
-  utils/
-frontend/
-  .env
-  .gitignore
-  eslint.config.js
-  index.html
-  package.json
-  postcss.config.js
-  README.md
-  tailwind.config.js
-  vite.config.js
-  public/
-  src/
-```
+Tổng doanh thu theo thời gian (7 ngày, 30 ngày, 90 ngày)
+Xu hướng doanh thu (biểu đồ đường)
+Phân bố trạng thái đơn hàng (biểu đồ tròn)
+Tỉ lệ hoàn thành đơn
+Giá trị đơn hàng trung bình
+🏢 Quản lý hồ sơ
 
-Một số file tiêu biểu:
-- Server: [backend/index.js](backend/index.js)
-- Kết nối DB: [backend/config/db.js](backend/config/db.js)
-- Controller đơn hàng: [backend/controllers/order.controllers.js](backend/controllers/order.controllers.js)
-- Service sản phẩm: [backend/services/product.services.js](backend/services/product.services.js)
-- Trang sản phẩm (khách): [frontend/src/pages/common/ProductsPage.jsx](frontend/src/pages/common/ProductsPage.jsx)
-- Trang menu (nhà hàng): [frontend/src/pages/restaurant/MenuPage.jsx](frontend/src/pages/restaurant/MenuPage.jsx)
-- Trang drone (nhà hàng): [frontend/src/pages/restaurant/DronePage.jsx](frontend/src/pages/restaurant/DronePage.jsx)
-- Trang chủ: [frontend/src/pages/common/HomePage.jsx](frontend/src/pages/common/HomePage.jsx)
+Cập nhật thông tin nhà hàng
+Thay đổi vị trí trên bản đồ
+Upload ảnh đại diện
+Cài đặt phí giao hàng, đơn tối thiểu
+🛡️ Admin
+👥 Quản lý người dùng
 
-## 5) Công nghệ sử dụng
+Xem danh sách người dùng (phân trang)
+Tìm kiếm theo email/tên
+Khoá/mở khoá tài khoản
+Xem chi tiết thông tin
+🏬 Quản lý nhà hàng
 
+Duyệt/từ chối đăng ký nhà hàng mới
+Xem thông tin chi tiết (địa chỉ, bản đồ, ảnh)
+Khoá/mở khoá nhà hàng
+Xoá nhà hàng
+Trạng thái: pending, verified, suspended
+🚁 Quản lý Drone toàn hệ thống
+
+Xem tất cả drone của các nhà hàng
+Thống kê theo trạng thái
+Xem chi tiết drone
+📊 Thống kê toàn hệ thống
+
+Tổng doanh thu toàn bộ đơn hàng
+Biểu đồ doanh thu vs chi phí
+Top 5 nhà hàng có doanh thu cao nhất
+Phân bố trạng thái đơn hàng
+Số lượng người dùng, nhà hàng, drone
+📦 Quản lý đơn hàng
+
+Xem tất cả đơn hàng
+Lọc theo trạng thái, nhà hàng
+Xem chi tiết đơn (món, giá, địa chỉ, drone)
+
+# 🏗️ Kiến trúc hệ thống
+
+Backend - Kiến trúc 3 lớp
+┌─────────────────┐
+│   Controllers   │  ← Nhận request, gọi Service
+├─────────────────┤
+│    Services     │  ← Logic nghiệp vụ
+├─────────────────┤
+│  Repositories   │  ← Truy cập Database
+├─────────────────┤
+│     Models      │  ← Schema MongoDB
+└─────────────────┘
+
+# 🛠️ Công nghệ sử dụng
 Backend
-- Node.js, Express, MongoDB (Mongoose)
-- Xác thực JWT, Multer (upload), CORS, Dotenv, Nodemailer
-- NPM scripts: start/dev (xem [backend/package.json](backend/package.json))
+Node.js v18+ - JavaScript runtime
+Express.js v4.18+ - Web framework
+MongoDB v6.0+ - NoSQL database
+Mongoose v7.0+ - ODM
+JWT - Authentication
+Multer - File upload
+Bcrypt - Password hashing
+Nodemailer - Email service
+CORS - Cross-origin requests
 
 Frontend
-- React + Vite
-- TailwindCSS
-- Lucide Icons
-- React Toastify
+React v18.2+ - UI library
+Vite v5.0+ - Build tool
+React Router v6.20+ - Routing
+TailwindCSS v3.4+ - Styling
+Lucide React - Icons
+React Toastify - Notifications
+Leaflet - Maps (OpenStreetMap)
+Recharts - Charts & Analytics
 
-## 6) Thiết lập môi trường
+# 📁 Cấu trúc thư mục
 
-Backend (.env)
-```
-PORT=5000
-MONGODB_URI=mongodb://localhost:27017/foodfast
-JWT_SECRET=your_jwt_secret
-```
+Food-Fast-Delivery/
+│
+├── backend/
+│   ├── config/
+│   │   └── db.js                    # Kết nối MongoDB
+│   ├── controllers/
+│   │   ├── auth.controllers.js      # Đăng ký, đăng nhập
+│   │   ├── cart.controllers.js      # Giỏ hàng
+│   │   ├── delivery.controllers.js  # Quản lý giao hàng
+│   │   ├── drone.controllers.js     # CRUD drone
+│   │   ├── order.controllers.js     # Quản lý đơn hàng
+│   │   ├── payment.controllers.js   # Xử lý thanh toán
+│   │   ├── product.controllers.js   # CRUD sản phẩm
+│   │   └── restaurant.controllers.js # CRUD nhà hàng
+│   ├── middlewares/
+│   │   └── auth.js                  # Xác thực JWT
+│   ├── models/
+│   │   ├── user.models.js
+│   │   ├── restaurant.models.js
+│   │   ├── product.models.js
+│   │   ├── order.models.js
+│   │   ├── drone.models.js
+│   │   └── delivery.models.js
+│   ├── repositories/
+│   │   ├── user.repositories.js
+│   │   ├── order.repositories.js
+│   │   ├── drone.repositories.js
+│   │   └── ... (tương tự cho tất cả models)
+│   ├── services/
+│   │   ├── drone.services.js        # Logic nghiệp vụ drone
+│   │   ├── droneMovement.services.js # Di chuyển drone (realtime)
+│   │   ├── order.services.js
+│   │   ├── product.services.js
+│   │   └── ...
+│   ├── routes/
+│   │   ├── auth.routes.js
+│   │   ├── cart.routes.js
+│   │   ├── drone.routes.js
+│   │   ├── order.routes.js
+│   │   └── ...
+│   ├── uploads/                     # Lưu ảnh upload
+│   ├── .env                         # Biến môi trường
+│   ├── index.js                     # Entry point
+│   └── package.json
+│
+├── frontend/
+│   ├── public/                      # Static assets
+│   ├── src/
+│   │   ├── components/
+│   │   │   ├── Navbar.jsx           # Header navigation
+│   │   │   ├── Footer.jsx           # Footer
+│   │   │   ├── ProductCard.jsx      # Card món ăn
+│   │   │   └── ProtectedRoute.jsx   # Bảo vệ route
+│   │   ├── pages/
+│   │   │   ├── common/              # Trang dùng chung
+│   │   │   │   ├── HomePage.jsx
+│   │   │   │   ├── LoginPage.jsx
+│   │   │   │   ├── RegisterPage.jsx
+│   │   │   │   ├── ProductsPage.jsx # Danh sách món ăn + phân trang
+│   │   │   │   ├── RestaurantsPage.jsx
+│   │   │   │   ├── OrdersPage.jsx
+│   │   │   │   ├── OrderDetailPage.jsx
+│   │   │   │   ├── PaymentPage.jsx  # Chọn địa chỉ trên bản đồ
+│   │   │   │   └── ProfilePage.jsx
+│   │   │   ├── restaurant/          # Trang nhà hàng
+│   │   │   │   ├── RestaurantDashboard.jsx
+│   │   │   │   ├── RestaurantRegisterPage.jsx
+│   │   │   │   ├── MenuPage.jsx     # Quản lý thực đơn
+│   │   │   │   ├── DronePage.jsx    # Quản lý drone + gán đơn
+│   │   │   │   ├── OrderPage.jsx
+│   │   │   │   ├── AnalyticsPage.jsx # Thống kê doanh thu
+│   │   │   │   └── Profile.jsx
+│   │   │   └── admin/               # Trang admin
+│   │   │       ├── AdminDashboard.jsx
+│   │   │       ├── ManagementOrders.jsx
+│   │   │       ├── ManagementUsers.jsx
+│   │   │       ├── ManagementRestaurants.jsx
+│   │   │       ├── ManagementDrones.jsx
+│   │   │       └── AnalyticsPageAd.jsx
+│   │   ├── App.jsx                  # Main App component
+│   │   ├── main.jsx                 # Entry point
+│   │   └── index.css                # Global styles
+│   ├── .env                         # API base URL
+│   ├── vite.config.js
+│   ├── tailwind.config.js
+│   └── package.json
+│
+├── .github/
+│   └── workflows/
+│       ├── ci.yml                   # CI pipeline
+│       └── codeql.yml               # Security scanning
+│
+└── README.md                        
 
-Frontend (.env)
-```
-VITE_API_BASE=http://localhost:5000
-```
+# ⚙️ Cài đặt & Chạy
 
-## 7) Cài đặt & chạy
+Yêu cầu hệ thống
+Node.js v18+
+MongoDB v6.0+
+npm hoặc yarn
+1. Clone repository
+git clone https://github.com/yourusername/Food-Fast-Delivery.git
+cd Food-Fast-Delivery
 
-Backend
-```
+2. Cài đặt Backend
 cd backend
 npm install
-npm run dev
-# hoặc: npm start
-```
 
-Frontend
-```
-cd frontend
+Tạo file .env:
+PORT=5000
+MONGODB_URI=mongodb://localhost:27017/foodfast
+JWT_SECRET=your_super_secret_jwt_key_here_change_in_production
+
+Chạy server:
+npm run dev    # Development mode (nodemon)
+# hoặc
+npm start      # Production mode
+Server chạy tại: http://localhost:5000
+
+3. Cài đặt Frontend
+cd ../frontend
 npm install
+
+Tạo file .env:
+VITE_API_BASE=http://localhost:5000
+
+Chạy frontend:  
 npm run dev
-# Mặc định Vite: http://localhost:5173
-```
 
-## 8) Luồng nghiệp vụ chính
+Frontend chạy tại: http://localhost:5173
 
-Đặt món & giao hàng
-1. Khách duyệt sản phẩm theo danh mục/nhà hàng tại [frontend/src/pages/common/ProductsPage.jsx](frontend/src/pages/common/ProductsPage.jsx), tìm kiếm, phân trang.
-2. Thêm vào giỏ thông qua API:
-   - GET `/api/cart/latest`
-   - POST `/api/cart`
-   - POST `/api/cart/add`
-3. Tạo đơn hàng (endpoint trong Order Controller).
-4. Nhà hàng chuẩn bị → giao hàng bằng drone.
-5. Khi drone bắt đầu giao:
-   - Hệ thống tạo thông báo “Drone đã nhận đơn” cho khách.
-   - Sau 10s, nhắc “Đơn đã đến nơi, vui lòng xác nhận”.
-6. Khách mở chi tiết đơn hàng và bấm “Xác nhận hoàn thành” (PUT `/api/order/:id/confirm-completed`).
-7. Hệ thống chuyển đơn `completed`, drone về `idle`, và trừ 15% pin cho mỗi đơn hoàn thành.
-
-Ẩn/hiện món ăn
-- Nhà hàng có thể bật “Tạm ẩn” món trong [frontend/src/pages/restaurant/MenuPage.jsx](frontend/src/pages/restaurant/MenuPage.jsx).
-- Khi ẩn: món biến mất khỏi danh sách khách, không thể thêm mới vào giỏ.
-- Nếu món đang có trong giỏ trước đó, hệ thống có thể loại bỏ khi tạo đơn và thông báo cho khách.
-
-Phân trang sản phẩm (khách)
-- Đang áp dụng phân trang phía client tại [frontend/src/pages/common/ProductsPage.jsx](frontend/src/pages/common/ProductsPage.jsx).
-- Người dùng có thể chọn số món mỗi trang, chuyển trang đầu/trước/sau/cuối, hiển thị tổng số món.
-
-## 9) API tổng quan (rút gọn)
-
-Auth
-- POST `/api/auth/register`, POST `/api/auth/login`
-
-Sản phẩm
-- GET `/api/product/categories` — danh sách danh mục
-- GET `/api/product/category/:category` — theo danh mục
-- GET `/api/product/restaurant/:restaurantId` — theo nhà hàng
-- PUT `/api/product/:id` — cập nhật/thay đổi trạng thái (ví dụ tạm ẩn/hiện) trong controller tương ứng
-
-Giỏ hàng
-- GET `/api/cart/latest`
-- POST `/api/cart`
-- POST `/api/cart/add`
-
-Đơn hàng
-- GET `/api/order/user/:userId` — đơn của người dùng
-- PUT `/api/order/:id/confirm-completed` — khách xác nhận hoàn thành (đưa drone về idle, trừ pin)
-
-Nhà hàng/Drone
-- GET `/api/restaurant/:id` — thông tin nhà hàng
-- Các API drone/điều phối trong controllers và routes tương ứng (xem thư mục [backend/routes](backend/routes))
-
-Chi tiết triển khai xem:
-- Controller đơn hàng: [backend/controllers/order.controllers.js](backend/controllers/order.controllers.js)
-- Service sản phẩm: [backend/services/product.services.js](backend/services/product.services.js)
-
-## 10) Gợi ý phát triển tiếp
-
-- Realtime bằng WebSocket/SSE thay cho polling.
-- Phân trang server-side cho sản phẩm/đơn hàng khi dữ liệu lớn.
-- Ràng buộc năng lượng/pin drone trước khi nhận đơn.
-- Thêm unit/integration test, CI/CD.
-- RBAC chi tiết hơn cho Admin/Nhà hàng/Khách.
-
-## 11) Lưu ý
-
-- Thư mục upload chứa file nhị phân tạm: [backend/uploads](backend/uploads).
-- Đảm bảo JWT_SECRET bảo mật khi deploy.
-- Sử dụng HTTPS và reverse proxy cho môi trường production.
-
----
-Liên kết nhanh:
-- Server: [backend/index.js](backend/index.js)
-- Kết nối DB: [backend/config/db.js](backend/config/db.js)
-- Sản phẩm (khách): [frontend/src/pages/common/ProductsPage.jsx](frontend/src/pages/common/ProductsPage.jsx)
-- Menu (nhà hàng): [frontend/src/pages/restaurant/MenuPage.jsx](frontend/src/pages/restaurant/MenuPage.jsx)
-- Drone (nhà hàng): [frontend/src/pages/restaurant/DronePage.jsx](frontend/src/pages/restaurant/DronePage.jsx)
-- Trang chủ: [frontend/src/pages/common/HomePage.jsx](frontend/src/pages/common/HomePage.jsx)
+4. Truy cập ứng dụng
+Trang chủ: http://localhost:5173
+Đăng nhập: http://localhost:5173/login
+Đăng ký khách hàng: http://localhost:5173/register
+Đăng ký nhà hàng: http://localhost:5173/register-restaurant
