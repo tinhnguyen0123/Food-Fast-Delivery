@@ -469,6 +469,15 @@ function OrderDetailView({ order, getStatusBadge, onConfirm, onReady, onStartDel
               )}
             </div>
           </div>
+          {/* Thêm ghi chú nếu có */}
+          {order.note && (
+            <div className="mb-3 p-2 bg-orange-50 border border-orange-200 rounded-md">
+              <h4 className="font-semibold text-xs text-orange-800 mb-1 flex items-center gap-1">
+                📝 Ghi chú từ khách
+              </h4>
+              <p className="text-xs text-gray-700 italic">{order.note}</p>
+            </div>
+          )}
           {/* Order Items */}
           <div className="space-y-2">
             <h4 className="font-semibold text-sm text-gray-800 flex items-center gap-1">
@@ -481,7 +490,7 @@ function OrderDetailView({ order, getStatusBadge, onConfirm, onReady, onStartDel
                   <li key={idx} className="flex justify-between items-center">
                     <div className="flex items-center gap-1">
                       <span className="w-5 h-5 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-xs font-semibold">
-                        {item.quantity}
+                        x{item.quantity}
                       </span>
                       <span className="font-medium text-gray-700">
                         {item.productId?.name || item.name || "Món"}

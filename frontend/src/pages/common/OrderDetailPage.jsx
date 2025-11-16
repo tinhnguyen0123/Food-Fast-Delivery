@@ -15,6 +15,7 @@ import {
   Truck,
   CreditCard,
   Check,
+  Info,
 } from "lucide-react";
 import {
   MapContainer,
@@ -482,6 +483,19 @@ export default function OrderDetailPage() {
                 )}
               </div>
             </div>
+
+            {/* ✅ Thêm phần hiển thị ghi chú */}
+            {order.note && (
+              <div className="bg-white rounded-lg shadow-md p-6">
+                <h3 className="font-semibold text-lg text-gray-800 mb-3 flex items-center gap-2">
+                  <Info className="w-5 h-5 text-orange-600" />
+                  Ghi chú từ khách hàng
+                </h3>
+                <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+                  <p className="text-gray-700 text-sm whitespace-pre-wrap">{order.note}</p>
+                </div>
+              </div>
+            )}
 
             {/* Payment Summary Card */}
             <div className="bg-white rounded-lg shadow-md p-6">
