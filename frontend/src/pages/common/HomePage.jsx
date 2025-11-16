@@ -1,10 +1,10 @@
 import { useNavigate } from 'react-router-dom';
-import { 
-  Truck, 
-  Clock, 
-  Shield, 
-  Star, 
-  MapPin, 
+import {
+  Truck,
+  Clock,
+  Shield,
+  Star,
+  MapPin,
   Smartphone,
   ChevronRight,
   Package,
@@ -72,7 +72,7 @@ export default function HomePage() {
                 <Truck className="w-4 h-4" />
                 Công nghệ giao hàng mới nhất
               </div>
-              
+
               <h1 className="text-5xl sm:text-6xl font-bold mb-6">
                 <span className="bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
                   Giao hàng
@@ -80,9 +80,9 @@ export default function HomePage() {
                 <br />
                 <span className="text-gray-800">bằng Drone 🚁</span>
               </h1>
-              
+
               <p className="text-xl text-gray-600 mb-8 leading-relaxed">
-                Trải nghiệm công nghệ giao hàng tương lai. Đặt món yêu thích, 
+                Trải nghiệm công nghệ giao hàng tương lai. Đặt món yêu thích,
                 nhận trong 15 phút với drone siêu tốc!
               </p>
 
@@ -94,7 +94,7 @@ export default function HomePage() {
                   <span>Đặt món ngay</span>
                   <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
                 </button>
-                
+
                 <button
                   onClick={() => navigate('/products')}
                   className="bg-white text-gray-700 px-8 py-4 rounded-xl font-semibold text-lg hover:shadow-lg transition-all duration-200 border-2 border-gray-200"
@@ -133,7 +133,7 @@ export default function HomePage() {
                   </div>
                 </div>
               </div>
-              
+
               {/* Floating Elements */}
               <div className="absolute top-10 -left-10 bg-yellow-400 rounded-full p-4 shadow-lg animate-bounce">
                 <span className="text-3xl">⚡</span>
@@ -284,7 +284,7 @@ export default function HomePage() {
             <p className="text-xl text-gray-600 mb-8">
               Hàng trăm nhà hàng đang chờ bạn khám phá. Đặt món ngay và nhận ưu đãi cho đơn đầu tiên!
             </p>
-            
+
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <button
                 onClick={() => navigate('/restaurants')}
@@ -315,7 +315,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      
+
     </div>
   );
 }

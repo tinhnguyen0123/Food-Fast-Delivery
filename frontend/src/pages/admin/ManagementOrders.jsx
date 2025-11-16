@@ -464,7 +464,7 @@ export default function OrdersPage() {
               </pre>
             </div>
             */}
-            
+
             {/* ✅ Thêm giao diện chi tiết mới */}
             <div className="p-6 space-y-6">
               {/* --- Section 1: Tóm tắt --- */}
@@ -624,7 +624,7 @@ export default function OrdersPage() {
               )}
             </div>
             {/* Kết thúc giao diện mới */}
-            
+
           </div>
         </div>
       )}

@@ -282,7 +282,7 @@ export default function OrderDetailPage() {
           >
             <ArrowLeft className="w-5 h-5" /> Quay lại danh sách
           </button>
-          
+
           <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-2">
             <div>
               <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
@@ -328,7 +328,7 @@ export default function OrderDetailPage() {
                          ></div>
                        </div>
                     )}
-                    
+
                     {/* Step item */}
                     <div className="flex flex-col items-center w-20">
                       <div
@@ -361,7 +361,7 @@ export default function OrderDetailPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* 3a. Left Column */}
           <div className="lg:col-span-2 space-y-6">
-            
+
             {/* Delivery Tracking Card */}
             {!hideTracking && (rC || cC) && (
               <div className="bg-white rounded-lg shadow-md overflow-hidden">
@@ -458,7 +458,7 @@ export default function OrderDetailPage() {
 
           {/* 3b. Right Column */}
           <div className="lg:col-span-1 space-y-6">
-            
+
             {/* Delivery Address Card */}
             <div className="bg-white rounded-lg shadow-md p-6">
               <h3 className="font-semibold text-lg text-gray-800 mb-4 flex items-center gap-2">
@@ -515,7 +515,7 @@ export default function OrderDetailPage() {
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-600">Phí giao hàng</span>
                   <span className="font-medium text-gray-800">...đ</span>
-                </div> 
+                </div>
                 */}
                 <hr className="border-gray-200" />
                 <div className="flex justify-between items-center">
@@ -529,7 +529,8 @@ export default function OrderDetailPage() {
 
             {/* Confirm Button */}
             {order?.status !== "completed" &&
-              (order?.status === "delivering" || delivery?.status === "arrived") && (
+              order?.status !== "cancelled" &&
+              (delivery?.status === "arrived" || order?.arrivedNotified) && (
                 <button
                   disabled={confirming}
                   onClick={confirmOrderReceived}

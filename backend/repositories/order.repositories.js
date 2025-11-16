@@ -38,6 +38,14 @@ class OrderRepository {
     return await Order.find({ restaurantId })
       .populate("userId", "name email")
       .populate("items.productId", "name price")
+      .populate({
+        path: "restaurantId",
+        select: "name address locationId",
+        populate: {
+          path: "locationId",
+          select: "coords address"
+        }
+      })
       .sort({ createdAt: -1 });
   }
 

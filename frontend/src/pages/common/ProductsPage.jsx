@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { toast } from "react-toastify";
 import { Search, UtensilsCrossed, ArrowLeft, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
@@ -23,117 +23,125 @@ export default function ProductsPage() {
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(12);
 
+  // ... (TOÀN BỘ LOGIC: loadCategories, loadProducts, fetchRestaurantInfo, handleAddToCart)
+  // ... (KHÔNG THAY ĐỔI BẤT CỨ HÀM NÀO Ở ĐÂY)
   // Load danh mục
-  useEffect(() => {
-    const loadCategories = async () => {
-      try {
-        const res = await fetch(`${API_BASE}/api/product/categories`);
-        const data = await res.json();
-        setCategories(Array.isArray(data) ? data : []);
-      } catch {
-        setCategories([]);
-      }
-    };
-    loadCategories();
-  }, []);
+  useEffect(() => {
+    const loadCategories = async () => {
+      try {
+        const res = await fetch(`${API_BASE}/api/product/categories`);
+        const data = await res.json();
+        setCategories(Array.isArray(data) ? data : []);
+      } catch {
+        setCategories([]);
+      }
+    };
+    loadCategories();
+  }, []);
 
-  // Load sản phẩm theo category hoặc restaurant
-  useEffect(() => {
-    const loadProducts = async () => {
-      setLoading(true);
-      try {
-        let url;
-        if (restaurantId) {
-          url = `${API_BASE}/api/product/restaurant/${encodeURIComponent(restaurantId)}`;
-        } else {
-          const cat = selectedCategory || "all";
-          url = `${API_BASE}/api/product/category/${encodeURIComponent(cat)}`;
-        }
+  // Load sản phẩm theo category hoặc restaurant
+  useEffect(() => {
+    const loadProducts = async () => {
+      setLoading(true);
+      try {
+        let url;
+        if (restaurantId) {
+          url = `${API_BASE}/api/product/restaurant/${encodeURIComponent(restaurantId)}`;
+        } else {
+          const cat = selectedCategory || "all";
+          url = `${API_BASE}/api/product/category/${encodeURIComponent(cat)}`;
+        }
 
-        const res = await fetch(url);
-        const data = await res.json();
-        setProducts(Array.isArray(data) ? data : []);
-      } catch {
-        setProducts([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-    loadProducts();
-  }, [restaurantId, selectedCategory]);
+        const res = await fetch(url);
+        const data = await res.json();
+        setProducts(Array.isArray(data) ? data : []);
+      } catch {
+        setProducts([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadProducts();
+  }, [restaurantId, selectedCategory]);
 
-  // Load thông tin nhà hàng
-  useEffect(() => {
-    const fetchRestaurantInfo = async () => {
-      if (!restaurantId) return;
-      try {
-        const res = await fetch(`${API_BASE}/api/restaurant/${restaurantId}`);
-        if (res.ok) {
-          const data = await res.json();
-          setSelectedRestaurant(data);
-        }
-      } catch (err) {
-        console.error("Fetch restaurant error:", err);
-      }
-    };
-    fetchRestaurantInfo();
-  }, [restaurantId]);
+  // Load thông tin nhà hàng
+  useEffect(() => {
+    const fetchRestaurantInfo = async () => {
+      if (!restaurantId) return;
+      try {
+        const res = await fetch(`${API_BASE}/api/restaurant/${restaurantId}`);
+        if (res.ok) {
+          const data = await res.json();
+          setSelectedRestaurant(data);
+        }
+      } catch (err) {
+        console.error("Fetch restaurant error:", err);
+      }
+    };
+    fetchRestaurantInfo();
+  }, [restaurantId]);
 
-  const handleAddToCart = async (product) => {
-    const token = localStorage.getItem("token");
-    if (!token) {
-      toast.info("Vui lòng đăng nhập để thêm vào giỏ");
-      navigate("/login");
-      return;
-    }
+  const handleAddToCart = async (product) => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      toast.info("Vui lòng đăng nhập để thêm vào giỏ");
+      navigate("/login");
+      return;
+    }
 
-    try {
-      let res = await fetch(`${API_BASE}/api/cart/latest`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+    try {
+      let res = await fetch(`${API_BASE}/api/cart/latest`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
 
-      let cart;
-      if (res.ok) {
-        cart = await res.json();
-      } else {
-        res = await fetch(`${API_BASE}/api/cart`, {
-          method: "POST",
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (!res.ok) throw new Error("Không thể tạo giỏ hàng");
-        cart = await res.json();
-      }
+      let cart;
+      if (res.ok) {
+        cart = await res.json();
+      } else {
+        res = await fetch(`${API_BASE}/api/cart`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) throw new Error("Không thể tạo giỏ hàng");
+        cart = await res.json();
+      }
 
-      const addRes = await fetch(`${API_BASE}/api/cart/add`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          cartId: cart._id,
-          productId: product._id,
-          quantity: 1,
-        }),
-      });
+      const addRes = await fetch(`${API_BASE}/api/cart/add`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          cartId: cart._id,
+          productId: product._id,
+          quantity: 1,
+        }),
+      });
 
-      if (!addRes.ok) {
-        const err = await addRes.json();
-        throw new Error(err.message || "Thêm vào giỏ thất bại");
-      }
+      if (!addRes.ok) {
+        const err = await addRes.json();
+        throw new Error(err.message || "Thêm vào giỏ thất bại");
+      }
 
-      toast.success("Đã thêm vào giỏ");
-    } catch (err) {
-      console.error("Add to cart error:", err);
-      toast.error(err.message || "Lỗi khi thêm vào giỏ");
-    }
-  };
+      toast.success("Đã thêm vào giỏ");
+    } catch (err) {
+      console.error("Add to cart error:", err);
+      toast.error(err.message || "Lỗi khi thêm vào giỏ");
+    }
+  };
+
 
   // Lọc sản phẩm
   const filteredProducts = products.filter((p) => {
     // ✅ FIX: Không lọc theo `available` ở đây nữa, để ProductCard tự xử lý
     const matchesCategory = selectedCategory === "all" || p.category === selectedCategory;
     const matchesQuery = p.name?.toLowerCase().includes(query.trim().toLowerCase());
+
+    // NẾU LỌC THEO NHÀ HÀNG: Chỉ cần match query
+    if (restaurantId) return matchesQuery;
+
+    // NẾU KHÔNG LỌC THEO NHÀ HÀNG: Match cả category và query
     return matchesCategory && matchesQuery;
   });
 
@@ -162,7 +170,8 @@ export default function ProductsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-orange-50 via-yellow-50 to-red-50 flex items-center justify-center">
+      // Đổi nền loading
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin h-12 w-12 border-4 border-orange-600 border-t-transparent rounded-full mx-auto mb-4" />
           <p className="text-gray-600 font-medium">Đang tải món ngon...</p>
@@ -171,12 +180,18 @@ export default function ProductsPage() {
     );
   }
 
+  // Xác định các danh mục sẽ hiển thị (nếu lọc theo nhà hàng, chỉ lấy category của nhà hàng đó)
+  const displayCategories = restaurantId
+    ? [...new Set(products.map(p => p.category).filter(Boolean))]
+    : categories;
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-orange-50 via-yellow-50 to-red-50">
+    // Đổi nền chính
+    <div className="min-h-screen bg-gray-100">
       <div className="max-w-7xl mx-auto px-4 py-8">
-        {/* Header nhà hàng */}
+        {/* Header nhà hàng (giữ nguyên) */}
         {restaurantId && selectedRestaurant && (
-          <div className="mb-8 bg-white rounded-2xl shadow-lg overflow-hidden">
+          <div className="mb-8 bg-white rounded-xl shadow-md overflow-hidden">
             <div className="relative h-48 bg-gradient-to-r from-orange-400 to-red-400">
               {selectedRestaurant.image ? (
                 <img src={selectedRestaurant.image} alt={selectedRestaurant.name} className="w-full h-full object-cover" />
@@ -202,152 +217,168 @@ export default function ProductsPage() {
           </div>
         )}
 
-        {/* Danh mục + Search + Summary */}
-        <div className="bg-white rounded-2xl shadow-lg p-4 mb-4">
-          <div className="flex flex-wrap gap-2 mb-4">
-            <button
-              onClick={() => setSelectedCategory("all")}
-              className={`px-4 py-2 rounded-full text-sm font-medium border ${
-                selectedCategory === "all" ? "bg-orange-600 text-white border-orange-600" : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
-              }`}
-            >
-              Tất cả
-            </button>
-            {categories.map((c) => (
+        {/* Bọc layout 2 cột */}
+        <div className="grid grid-cols-1 lg:grid-cols-4 lg:gap-8 items-start">
+
+          {/* Cột 1: Sidebar Bộ lọc (Categories) */}
+          <div className="lg:col-span-1 lg:sticky lg:top-8 bg-white rounded-xl shadow-md p-4 mb-6 lg:mb-0">
+            <h3 className="text-xl font-bold text-gray-800 mb-4 px-2">
+              {restaurantId ? "Thực đơn" : "Danh mục"}
+            </h3>
+            {/* Đổi flex-wrap thành space-y-2 (danh sách dọc) */}
+            <nav className="space-y-1">
               <button
-                key={c}
-                onClick={() => setSelectedCategory(c)}
-                className={`px-4 py-2 rounded-full text-sm font-medium border ${
-                  selectedCategory === c ? "bg-orange-600 text-white border-orange-600" : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
+                onClick={() => setSelectedCategory("all")}
+                className={`w-full text-left px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
+                  selectedCategory === "all" ? "bg-orange-100 text-orange-700 font-semibold" : "text-gray-700 hover:bg-orange-50"
                 }`}
               >
-                {c}
+                Tất cả
               </button>
-            ))}
-          </div>
-
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-            <div className="flex-1 relative mb-2 md:mb-0">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-              <input
-                type="text"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="Tìm kiếm món ăn..."
-                className="w-full pl-12 pr-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all"
-              />
-            </div>
-            <div className="bg-orange-50 px-4 py-3 rounded-xl">
-              <span className="text-sm text-gray-600">
-                Tổng: <span className="font-bold text-orange-600">{filteredProducts.length}</span> món
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* Sản phẩm */}
-        {filteredProducts.length === 0 ? (
-          <div className="text-center py-20 bg-white rounded-2xl shadow-lg">
-            <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <UtensilsCrossed className="w-10 h-10 text-gray-400" />
-            </div>
-            <h3 className="text-xl font-semibold text-gray-800 mb-2">Không tìm thấy món ăn</h3>
-            <p className="text-gray-600 mb-6">Thử tìm kiếm với từ khóa khác hoặc xem thực đơn khác</p>
-            {query && (
-              <button
-                onClick={() => setQuery("")}
-                className="px-6 py-2 bg-orange-600 text-white rounded-xl hover:bg-orange-700 transition-colors"
-              >
-                Xóa bộ lọc
-              </button>
-            )}
-          </div>
-        ) : (
-          <>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {pagedProducts.map((p) => (
-                <ProductCard key={p._id} product={p} onAdd={handleAddToCart} />
+              {displayCategories.map((c) => (
+                <button
+                  key={c}
+                  onClick={() => setSelectedCategory(c)}
+                  className={`w-full text-left px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
+                    selectedCategory === c ? "bg-orange-100 text-orange-700 font-semibold" : "text-gray-700 hover:bg-orange-50"
+                  }`}
+                >
+                  {c}
+                </button>
               ))}
-            </div>
+            </nav>
+          </div>
 
-            {/* Pagination mới */}
-            <div className="mt-10 flex flex-col items-center gap-4">
-              <nav className="flex items-center gap-2" aria-label="Pagination">
-                <button
-                  onClick={() => setPage(1)}
-                  disabled={page <= 1}
-                  className="h-10 w-10 rounded-xl border bg-white text-gray-700 hover:bg-gray-50 hover:border-orange-500 hover:text-orange-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center shadow-sm"
-                  title="Trang đầu"
-                >
-                  <ChevronsLeft className="w-5 h-5" />
-                </button>
-                <button
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
-                  disabled={page <= 1}
-                  className="h-10 w-10 rounded-xl border bg-white text-gray-700 hover:bg-gray-50 hover:border-orange-500 hover:text-orange-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center shadow-sm"
-                  title="Trang trước"
-                >
-                  <ChevronLeft className="w-5 h-5" />
-                </button>
+          {/* Cột 2: Nội dung chính (Search, Grid, Pagination) */}
+          <div className="lg:col-span-3 space-y-6">
 
-                {getPageNumbers().map((n) => (
-                  <button
-                    key={n}
-                    onClick={() => setPage(n)}
-                    className={`h-10 min-w-[40px] px-3 rounded-xl border text-sm font-semibold transition-all ${
-                      n === page
-                        ? "bg-orange-600 text-white border-orange-600 shadow-md scale-105"
-                        : "bg-white text-gray-700 border-gray-300 hover:border-orange-500 hover:text-orange-600 hover:shadow"
-                    }`}
-                    title={`Trang ${n}`}
-                  >
-                    {n}
-                  </button>
-                ))}
-
-                <button
-                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                  disabled={page >= totalPages}
-                  className="h-10 w-10 rounded-xl border bg-white text-gray-700 hover:bg-gray-50 hover:border-orange-500 hover:text-orange-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center shadow-sm"
-                  title="Trang sau"
-                >
-                  <ChevronRight className="w-5 h-5" />
-                </button>
-                <button
-                  onClick={() => setPage(totalPages)}
-                  disabled={page >= totalPages}
-                  className="h-10 w-10 rounded-xl border bg-white text-gray-700 hover:bg-gray-50 hover:border-orange-500 hover:text-orange-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center shadow-sm"
-                  title="Trang cuối"
-                >
-                  <ChevronsRight className="w-5 h-5" />
-                </button>
-              </nav>
-
-              <div className="flex items-center gap-4 text-sm text-gray-600">
-                <div className="flex items-center gap-2">
-                  <span className="hidden sm:inline">Mỗi trang:</span>
-                  <select
-                    value={limit}
-                    onChange={(e) => {
-                      setLimit(Number(e.target.value));
-                      setPage(1);
-                    }}
-                    className="px-3 py-2 rounded-xl border bg-white hover:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500"
-                  >
-                    <option value={4}>4</option>
-                    <option value={8}>8</option>
-                    <option value={12}>12</option>
-                    <option value={16}>16</option>
-                  </select>
+            {/* Thẻ Tìm kiếm & Tóm tắt */}
+            <div className="bg-white rounded-xl shadow-md p-4">
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                <div className="flex-1 relative">
+                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  <input
+                    type="text"
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    placeholder="Tìm kiếm món ăn..."
+                    className="w-full pl-12 pr-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all"
+                  />
                 </div>
-
-                <span className="whitespace-nowrap">
-                  Hiển thị {Math.min(end, total)} / {total} • Trang {page}/{totalPages}
-                </span>
+                <div className="bg-orange-50 px-4 py-3 rounded-xl flex-shrink-0">
+                  <span className="text-sm text-gray-600">
+                    Tổng: <span className="font-bold text-orange-600">{filteredProducts.length}</span> món
+                  </span>
+                </div>
               </div>
             </div>
-          </>
-        )}
+
+            {/* Sản phẩm */}
+            {filteredProducts.length === 0 ? (
+              <div className="text-center py-20 bg-white rounded-xl shadow-md">
+                <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <UtensilsCrossed className="w-10 h-10 text-gray-400" />
+                </div>
+                <h3 className="text-xl font-semibold text-gray-800 mb-2">Không tìm thấy món ăn</h3>
+                <p className="text-gray-600 mb-6">Thử tìm kiếm với từ khóa khác hoặc xem thực đơn khác</p>
+                {query && (
+                  <button
+                    onClick={() => setQuery("")}
+                    className="px-6 py-2 bg-orange-600 text-white rounded-xl hover:bg-orange-700 transition-colors"
+                  >
+                    Xóa bộ lọc
+                  </button>
+                )}
+              </div>
+            ) : (
+              <>
+                {/* Lưới sản phẩm (thay đổi grid-cols) */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
+                  {pagedProducts.map((p) => (
+                    <ProductCard key={p._id} product={p} onAdd={handleAddToCart} />
+                  ))}
+                </div>
+
+                {/* Phân trang (Pagination) */}
+                <div className="mt-10 flex flex-col items-center gap-4">
+                  <nav className="flex items-center gap-2" aria-label="Pagination">
+                    <button
+                      onClick={() => setPage(1)}
+                      disabled={page <= 1}
+                      className="h-10 w-10 rounded-xl border bg-white text-gray-700 hover:bg-gray-50 hover:border-orange-500 hover:text-orange-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center shadow-sm"
+                      title="Trang đầu"
+                    >
+                      <ChevronsLeft className="w-5 h-5" />
+                    </button>
+                    <button
+                      onClick={() => setPage((p) => Math.max(1, p - 1))}
+                      disabled={page <= 1}
+                      className="h-10 w-10 rounded-xl border bg-white text-gray-700 hover:bg-gray-50 hover:border-orange-500 hover:text-orange-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center shadow-sm"
+                      title="Trang trước"
+                    >
+                      <ChevronLeft className="w-5 h-5" />
+                    </button>
+
+                    {getPageNumbers().map((n) => (
+                      <button
+                        key={n}
+                        onClick={() => setPage(n)}
+                        className={`h-10 min-w-[40px] px-3 rounded-xl border text-sm font-semibold transition-all ${
+                          n === page
+                            ? "bg-orange-600 text-white border-orange-600 shadow-md scale-105"
+                            : "bg-white text-gray-700 border-gray-300 hover:border-orange-500 hover:text-orange-600 hover:shadow"
+                        }`}
+                        title={`Trang ${n}`}
+                      >
+                        {n}
+                      </button>
+                    ))}
+
+                    <button
+                      onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                      disabled={page >= totalPages}
+                      className="h-10 w-10 rounded-xl border bg-white text-gray-700 hover:bg-gray-50 hover:border-orange-500 hover:text-orange-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center shadow-sm"
+                      title="Trang sau"
+                    >
+                      <ChevronRight className="w-5 h-5" />
+                    </button>
+                    <button
+                      onClick={() => setPage(totalPages)}
+                      disabled={page >= totalPages}
+                      className="h-10 w-10 rounded-xl border bg-white text-gray-700 hover:bg-gray-50 hover:border-orange-500 hover:text-orange-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center shadow-sm"
+                      title="Trang cuối"
+                    >
+                      <ChevronsRight className="w-5 h-5" />
+                    </button>
+                  </nav>
+
+                  <div className="flex items-center gap-4 text-sm text-gray-600">
+                    <div className="flex items-center gap-2">
+                      <span className="hidden sm:inline">Mỗi trang:</span>
+                      <select
+                        value={limit}
+                        onChange={(e) => {
+                          setLimit(Number(e.target.value));
+                          setPage(1);
+                        }}
+                        className="px-3 py-2 rounded-xl border bg-white hover:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                      >
+                        <option value={4}>4</option>
+                        <option value={8}>8</option>
+                        <option value={12}>12</option>
+                        <option value={16}>16</option>
+                      </select>
+                    </div>
+
+                    <span className="whitespace-nowrap">
+                      Hiển thị {Math.min(end, total)} / {total} • Trang {page}/{totalPages}
+                    </span>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );

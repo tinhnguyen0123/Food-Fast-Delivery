@@ -181,6 +181,7 @@ export default function Navbar() {
 
           {/* DESKTOP MENU */}
           <div className="hidden md:flex items-center gap-6">
+            <button onClick={() => safeNavigate('/')} className={`font-medium px-3 py-2 rounded-lg hover:bg-blue-50 ${isActive('/') ? 'bg-blue-50 text-blue-600 border-b-2 border-blue-600' : 'text-gray-700 hover:text-blue-600'}`}>🏠 Trang chủ</button>
             <button onClick={() => safeNavigate('/restaurants')} className={`font-medium px-3 py-2 rounded-lg hover:bg-blue-50 ${isActive('/restaurants') ? 'bg-blue-50 text-blue-600 border-b-2 border-blue-600' : 'text-gray-700 hover:text-blue-600'}`}>🏬 Nhà hàng</button>
 
             {token && (
@@ -266,6 +267,7 @@ export default function Navbar() {
             </button>
             {isMobileMenuOpen && (
               <div className="mt-4 pb-4 border-t border-gray-200 flex flex-col gap-3 pt-4">
+                <button onClick={() => safeNavigate('/')} className={`font-medium w-full text-left py-2 px-4 rounded-lg hover:bg-blue-50 ${isActive('/') ? 'bg-blue-50 text-blue-600 border-l-4 border-blue-600' : 'text-gray-700 hover:text-blue-600'}`}>🏠 Trang chủ</button>
                 <button onClick={() => safeNavigate('/restaurants')} className={`font-medium w-full text-left py-2 px-4 rounded-lg hover:bg-blue-50 ${isActive('/restaurants') ? 'bg-blue-50 text-blue-600 border-l-4 border-blue-600' : 'text-gray-700 hover:text-blue-600'}`}>🏬 Nhà hàng</button>
                 {token && (
                   <>

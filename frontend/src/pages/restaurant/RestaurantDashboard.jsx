@@ -225,7 +225,7 @@ export default function RestaurantDashboard() {
           );
         })}
       </nav>
- 
+
       {/* Logout Button (ĐÃ XÓA KHỎI ĐÂY) */}
     </>
   );
@@ -234,7 +234,7 @@ export default function RestaurantDashboard() {
     // ✅ Đổi nền chính sang xám nhạt
     <div className="flex min-h-screen bg-gray-100">
       {/* --- 1. Desktop Sidebar --- */}
-      {/*         `lg:flex-col` và `space-y-6` sẽ tự động sắp xếp các phần tử con 
+      {/*         `lg:flex-col` và `space-y-6` sẽ tự động sắp xếp các phần tử con
         (Header, Logout, Nav) với khoảng cách 6 đơn vị.
         `Nav` có `flex-1` sẽ chiếm hết không gian còn lại, đẩy
         các mục menu xuống dưới.
@@ -277,7 +277,7 @@ export default function RestaurantDashboard() {
                   <span className="font-bold text-sm">{activeMenuItem.label}</span>
                 </div>
               )}
-              
+             
               <button
                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
                 className="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 transition-colors"
