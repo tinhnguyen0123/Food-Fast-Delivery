@@ -365,6 +365,8 @@ export default function PaymentPage() {
                 zoom={13}
                 style={{ height: "100%", width: "100%" }}
               >
+
+                //hello
                 <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
                 <Marker position={[position.lat, position.lng]} />
                 <MapClickHandler
