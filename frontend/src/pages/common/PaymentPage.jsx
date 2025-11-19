@@ -271,7 +271,7 @@ export default function PaymentPage() {
           },
           body: JSON.stringify({
             orderIds: orderIds,
-  _amount: grandTotal,
+            amount: grandTotal,
             method: "MOMO",
           }),
         });
